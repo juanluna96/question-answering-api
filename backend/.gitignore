@@ -17,3 +17,6 @@ env/
 
 # FastAPI specific (common for Python web apps)
 .env
+
+# Datafiles from thecnical interview
+data/
