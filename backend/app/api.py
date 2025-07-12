@@ -21,6 +21,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+@app.post("/answer")
 async def root():
     return {"message": "Question Answering API está funcionando"}
