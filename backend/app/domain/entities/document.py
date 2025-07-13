@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict
 import uuid
 
 @dataclass
@@ -7,7 +7,7 @@ class Document:
     """Entidad que representa un documento del sistema"""
     id: str
     content: str
-    metadata: dict = {}
+    metadata: Dict[str, str] = field(default_factory=dict)
     
     def __post_init__(self):
         if not self.id:
