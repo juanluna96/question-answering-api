@@ -17,17 +17,18 @@ class EmbeddingManager:
         self.embedding_service = embedding_service
         self.cache_service = cache_service
     
-    async def load_or_generate_embeddings(self, csv_path: str) -> List[DocumentEmbedding]:
+    async def load_or_generate_embeddings(self, csv_path: str, force_regenerate: bool = False) -> List[DocumentEmbedding]:
         """Carga embeddings desde caché o los genera si no existen
         
         Args:
             csv_path: Ruta al archivo CSV con documentos
+            force_regenerate: Si forzar regeneración de embeddings
             
         Returns:
             Lista de embeddings de documentos
         """
-        # Verificar si existe caché
-        if await self.cache_service.cache_exists():
+        # Verificar si existe caché y no se fuerza regeneración
+        if not force_regenerate and await self.cache_service.cache_exists():
             print("📦 Cargando embeddings desde caché...")
             cached_embeddings = await self.cache_service.load_embeddings()
             if cached_embeddings:
