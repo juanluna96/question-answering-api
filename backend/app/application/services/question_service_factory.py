@@ -24,12 +24,12 @@ class QuestionServiceFactory:
         self._rag_question_service: Optional[RAGQuestionService] = None
         self._simple_question_service: Optional[SimpleQuestionService] = None
     
-    def create_rag_question_service(self) -> RAGQuestionService:
+    async def create_rag_question_service(self) -> RAGQuestionService:
         """
         Crea una instancia del servicio RAG de preguntas con todas sus dependencias
         
         Returns:
-            RAGQuestionService: Servicio configurado
+            RAGQuestionService: Servicio configurado e inicializado
         """
         if self._rag_question_service is None:
             # Crear servicio de generación OpenAI
@@ -67,6 +67,51 @@ class QuestionServiceFactory:
                 cache_service=cache_service
             )
             
+            # Inicializar el servicio de recuperación
+            initialization_success = await rag_retrieval_service.initialize()
+            if not initialization_success:
+                # Intentar crear embeddings automáticamente
+                print("No se pudieron cargar embeddings desde caché. Intentando crear embeddings automáticamente...")
+                
+                # Definir la ruta del CSV fuera del bloque try
+                csv_path = self._settings.documents_csv_path
+                
+                try:
+                    # Importar dependencias necesarias
+                    from ...infrastructure.config.dependency_container import DependencyContainer
+                    
+                    # Crear contenedor de dependencias y caso de uso
+                    dependency_container = DependencyContainer(self._settings)
+                    load_embeddings_use_case = dependency_container.get_load_embeddings_use_case()
+                    
+                    result = await load_embeddings_use_case.execute(
+                        csv_file_path=csv_path,
+                        cache_file_path=self._settings.embedding_cache_path,
+                        force_regenerate=False
+                    )
+                    print(f"Embeddings creados exitosamente: {result.message}")
+                    
+                    # Limpiar caché en memoria para forzar recarga desde archivo
+                    embedding_cache_reader.clear_cache()
+                    
+                    # Intentar inicializar nuevamente con force_reload
+                    embeddings_data = await embedding_cache_reader.load_embeddings_from_cache(force_reload=True)
+                    if embeddings_data:
+                        rag_retrieval_service._documents_cache = embeddings_data
+                        rag_retrieval_service._is_initialized = True
+                        initialization_success = True
+                    else:
+                        initialization_success = False
+                    if not initialization_success:
+                        raise RuntimeError("Falló la inicialización después de crear embeddings")
+                        
+                except Exception as create_error:
+                    raise RuntimeError(
+                        f"No se pudo inicializar el servicio de recuperación RAG. "
+                        f"Error al crear embeddings automáticamente: {create_error}. "
+                        f"Asegúrate de que el archivo CSV existe en '{csv_path}' o usa el endpoint /embeddings/load para cargar embeddings manualmente."
+                    )
+            
             # Crear el servicio principal RAG
             self._rag_question_service = RAGQuestionService(
                 generation_service=rag_generation_service,
@@ -87,7 +132,7 @@ class QuestionServiceFactory:
         
         return self._simple_question_service
     
-    def create_question_service(self, use_rag: bool = True) -> QuestionServicePort:
+    async def create_question_service(self, use_rag: bool = True) -> QuestionServicePort:
         """
         Crea el servicio de preguntas apropiado según la configuración
         
@@ -98,7 +143,7 @@ class QuestionServiceFactory:
             QuestionServicePort: Servicio de preguntas configurado
         """
         if use_rag and self._settings.enable_rag:
-            return self.create_rag_question_service()
+            return await self.create_rag_question_service()
         else:
             return self.create_simple_question_service()
     

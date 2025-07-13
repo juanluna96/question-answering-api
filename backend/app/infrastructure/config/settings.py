@@ -26,6 +26,10 @@ class Settings:
             "DEFAULT_CACHE_PATH", 
             "./data/cache/embeddings.pkl"
         )
+        self.documents_csv_path: str = os.getenv(
+            "DOCUMENTS_CSV_PATH", 
+            "./data/documents.csv"
+        )
         self.max_file_size_mb: int = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
         self.batch_size: int = int(os.getenv("BATCH_SIZE", "100"))
         
@@ -79,6 +83,7 @@ class Settings:
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
             "embedding_cache_path": self.embedding_cache_path,
+            "documents_csv_path": self.documents_csv_path,
             "max_file_size_mb": self.max_file_size_mb,
             "batch_size": self.batch_size,
             "enable_rag": self.enable_rag,

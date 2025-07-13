@@ -75,7 +75,7 @@ class RAGQuestionService(QuestionServicePort):
             total_processing_time = int((time.time() - start_time) * 1000)
             
             # 4. Extraer información de la respuesta RAG
-            if rag_response.get('status') == 'success':
+            if rag_response.get('success', False):
                 # Calcular confianza basada en múltiples factores
                 confidence = self._calculate_confidence(
                     rag_response=rag_response,
@@ -86,14 +86,17 @@ class RAGQuestionService(QuestionServicePort):
                 return {
                     'answer': rag_response['answer'],
                     'confidence': confidence,
-                    'processing_time_ms': total_processing_time
+                    'processing_time_ms': total_processing_time,
+                    'source_document_ids': rag_response.get('source_document_ids', []),
+                    'metadata': rag_response.get('metadata')
                 }
             else:
                 # Error en la generación RAG
                 return {
                     'answer': rag_response.get('answer', 'Lo siento, no pude procesar tu pregunta.'),
                     'confidence': 0.0,
-                    'processing_time_ms': total_processing_time
+                    'processing_time_ms': total_processing_time,
+                    'source_document_ids': []
                 }
                 
         except Exception as e:
@@ -102,7 +105,8 @@ class RAGQuestionService(QuestionServicePort):
             return {
                 'answer': f'Lo siento, ocurrió un error al procesar tu pregunta: {str(e)}',
                 'confidence': 0.0,
-                'processing_time_ms': processing_time
+                'processing_time_ms': processing_time,
+                'source_document_ids': []
             }
     
     async def validate_question(self, question: str) -> bool:

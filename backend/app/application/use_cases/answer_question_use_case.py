@@ -51,7 +51,8 @@ class AnswerQuestionUseCase:
                     status="success",
                     confidence=result.get('confidence', 0.8),
                     processing_time_ms=service_time,
-                    sources=result.get('source_document_ids')
+                    sources=result.get('source_document_ids'),
+                    metadata=result.get('metadata')
                 )
                 
             except ValueError as e:
