@@ -27,13 +27,6 @@ class DependencyContainer:
         Returns:
             Diccionario de configuración
         """
-        print("Cargando configuración...")
-        print("OPENAI_API_KEY:", os.getenv("OPENAI_API_KEY"))
-        print("OPENAI_MODEL:", os.getenv("OPENAI_MODEL", "text-embedding-3-small"))
-        print("DEFAULT_CACHE_PATH:", os.getenv("DEFAULT_CACHE_PATH", "./data/cache/embeddings.pkl"))
-        print("MAX_FILE_SIZE_MB:", os.getenv("MAX_FILE_SIZE_MB", "50"))
-        print("BATCH_SIZE:", os.getenv("BATCH_SIZE", "100"))
-    
         return {
             "openai_api_key": os.getenv("OPENAI_API_KEY"),
             "openai_model": os.getenv("OPENAI_MODEL", "text-embedding-3-small"),

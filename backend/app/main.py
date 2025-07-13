@@ -1,11 +1,23 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import os
 from .infrastructure.config.dependency_container import DependencyContainer
+from .infrastructure.web.question_controller import QuestionController
+from .infrastructure.web.response_middleware import StandardResponseMiddleware
+from .infrastructure.web.response_models import create_success_response, create_error_response
 
 # Instancia global del contenedor de dependencias
 dependency_container = DependencyContainer()
+
+# Configuración de la aplicación
+app_config = {
+    "title": "Question Answering API",
+    "description": "API para procesamiento de preguntas y respuestas",
+    "version": "1.0.0"
+}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,11 +41,18 @@ async def lifespan(app: FastAPI):
 
 # Crear aplicación FastAPI
 app = FastAPI(
-    title="Question Answering API",
-    description="API para generar embeddings y responder preguntas basadas en documentos CSV",
-    version="1.0.0",
+    title=app_config["title"],
+    description=app_config["description"],
+    version=app_config["version"],
     lifespan=lifespan
 )
+
+# Inicializar controlador
+question_controller = QuestionController()
+
+# Configurar middlewares
+# Middleware de respuesta estándar (debe ir antes que CORS)
+app.add_middleware(StandardResponseMiddleware)
 
 # Configurar CORS
 app.add_middleware(
@@ -44,58 +63,107 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Registrar rutas
-embedding_controller = dependency_container.get_embedding_controller()
-app.include_router(embedding_controller.get_router())
+# Incluir router del controlador
+app.include_router(question_controller.get_router())
 
-# Ruta raíz
+# Endpoint raíz
 @app.get("/")
 async def root():
-    """Endpoint raíz con información de la API"""
-    return {
-        "message": "Question Answering API",
-        "version": "1.0.0",
-        "description": "API para generar embeddings y responder preguntas",
+    """Endpoint raíz que muestra información de la API"""
+    api_info = {
+        "name": "Question Answering API",
+        "version": app_config["version"],
+        "description": app_config["description"],
         "endpoints": {
-            "embeddings": "/embeddings",
-            "health": "/embeddings/health",
-            "docs": "/docs",
-            "redoc": "/redoc"
+            "/": "Información de la API",
+            "/health": "Estado de salud de la API",
+            "/docs": "Documentación interactiva (Swagger UI)",
+            "/redoc": "Documentación alternativa (ReDoc)",
+            "/answer": "Procesar pregunta (POST)"
         }
     }
+    
+    return create_success_response(
+        data=api_info,
+        message="Información de la API obtenida exitosamente",
+        route="/"
+    )
 
-# Health check global
+# Health check
 @app.get("/health")
 async def health_check():
     """Health check global de la aplicación"""
     try:
         config = dependency_container.get_config()
         
-        return {
+        health_data = {
             "status": "healthy",
             "service": "question-answering-api",
-            "version": "1.0.0",
+            "version": app_config["version"],
             "config": {
                 "openai_configured": bool(config.get("openai_api_key")),
                 "model": config.get("openai_model"),
                 "cache_path": config.get("default_cache_path")
             }
         }
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error en health check: {str(e)}"
+        
+        return create_success_response(
+            data=health_data,
+            message="Servicio funcionando correctamente",
+            route="/health"
         )
+        
+    except Exception as e:
+        from .infrastructure.web.response_models import create_error_response
+        return create_error_response(
+            code=500,
+            message="Error en health check",
+            errors=[{"field": "general", "type": "Internal Error", "message": str(e)}],
+            route="/health"
+        )
+
+# Manejo de errores de validación
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Manejo de errores de validación de Pydantic"""
+    errors = []
+    for error in exc.errors():
+        field = ".".join(str(loc) for loc in error["loc"][1:])  # Omitir 'body'
+        errors.append({
+            "field": field,
+            "type": error["type"].replace("_", " ").title(),
+            "message": error["msg"].replace(f"Value error, ", "")
+        })
+    
+    error_response = create_error_response(
+        code=422,
+        message="Error de validación en los datos enviados",
+        errors=errors,
+        route=str(request.url.path)
+    )
+    
+    return JSONResponse(
+        status_code=422,
+        content=error_response.model_dump(mode='json')
+    )
 
 # Manejo de errores global
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
+async def global_exception_handler(request: Request, exc: Exception):
     """Manejo global de excepciones"""
-    return {
-        "error": "Error interno del servidor",
-        "detail": str(exc),
-        "path": str(request.url)
-    }
+    print(f"Error global: {exc}")
+    
+    error_response = create_error_response(
+        code=500,
+        message="Error interno del servidor",
+        errors=[{"field": "general", "type": "Internal Error", "message": str(exc)}],
+        route=str(request.url.path)
+    )
+    
+    return JSONResponse(
+        status_code=500,
+        content=error_response.model_dump(mode='json')
+    )
 
 if __name__ == "__main__":
     import uvicorn
