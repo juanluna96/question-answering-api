@@ -47,7 +47,7 @@ class QuestionController:
                     return create_error_response(
                         code=400,
                         message="Error en la validación de la pregunta",
-                        errors=[result.answer],
+                        errors=[{"field": "question", "type": "Validation Error", "message": result.answer}],
                         route="/answer",
                         data=result.dict()
                     )
@@ -63,14 +63,14 @@ class QuestionController:
                 return create_error_response(
                     code=e.status_code,
                     message=str(e.detail),
-                    errors=[str(e.detail)],
+                    errors=[{"field": "general", "type": "HTTP Error", "message": str(e.detail)}],
                     route="/answer"
                 )
             except Exception as e:
                 return create_error_response(
                     code=500,
                     message="Error interno del servidor",
-                    errors=[str(e)],
+                    errors=[{"field": "general", "type": "Internal Error", "message": str(e)}],
                     route="/answer"
                 )
     

@@ -76,9 +76,9 @@ class StandardResponseMiddleware(BaseHTTPMiddleware):
                 if isinstance(original_data, dict):
                     error_message = original_data.get("detail", error_message)
                     if "detail" in original_data and isinstance(original_data["detail"], list):
-                        errors = [str(err) for err in original_data["detail"]]
+                        errors = [{"field": "general", "type": "Detail Error", "message": str(err)} for err in original_data["detail"]]
                     elif "detail" in original_data:
-                        errors = [str(original_data["detail"])]
+                        errors = [{"field": "general", "type": "Detail Error", "message": str(original_data["detail"])}]
                 
                 standard_response = create_error_response(
                     code=response.status_code,
@@ -100,7 +100,7 @@ class StandardResponseMiddleware(BaseHTTPMiddleware):
             error_response = create_error_response(
                 code=500,
                 message="Error interno del servidor",
-                errors=[str(e)],
+                errors=[{"field": "general", "type": "Middleware Error", "message": str(e)}],
                 route=str(request.url.path)
             )
             
