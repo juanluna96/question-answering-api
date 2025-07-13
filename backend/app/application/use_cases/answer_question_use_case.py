@@ -50,7 +50,8 @@ class AnswerQuestionUseCase:
                     question=request.question,
                     status="success",
                     confidence=result.get('confidence', 0.8),
-                    processing_time_ms=service_time
+                    processing_time_ms=service_time,
+                    sources=result.get('source_document_ids')
                 )
                 
             except ValueError as e:
