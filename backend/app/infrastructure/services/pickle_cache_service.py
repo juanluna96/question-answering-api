@@ -1,6 +1,7 @@
 import pickle
 import asyncio
 import os
+import time
 from typing import List, Optional
 from ...domain.entities.document import DocumentEmbedding
 from ...domain.ports.cache_service import CacheService
@@ -76,7 +77,7 @@ class PickleCacheService(CacheService):
             "embeddings": embeddings,
             "metadata": {
                 "count": len(embeddings),
-                "created_at": asyncio.get_event_loop().time(),
+                "created_at": time.time(),
                 "version": "1.0"
             }
         }
