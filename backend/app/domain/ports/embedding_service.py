@@ -27,3 +27,12 @@ class EmbeddingService(ABC):
             Lista de vectores de embedding
         """
         pass
+    
+    @abstractmethod
+    def get_model_info(self) -> dict:
+        """Obtiene información del modelo usado
+        
+        Returns:
+            Información del modelo
+        """
+        pass
