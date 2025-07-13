@@ -1,39 +1,19 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from pydantic import BaseModel, Field, validator
 import os
 from .infrastructure.config.dependency_container import DependencyContainer
+from .infrastructure.web.question_controller import QuestionController
 
 # Instancia global del contenedor de dependencias
 dependency_container = DependencyContainer()
 
-# Modelos de request y response
-class QuestionRequest(BaseModel):
-    question: str = Field(..., description="Pregunta a responder")
-    
-    @validator('question')
-    def validate_question(cls, v):
-        if not v or not v.strip():
-            raise ValueError('La pregunta no puede estar vacía')
-        
-        # Eliminar espacios extra
-        v = v.strip()
-        
-        # Verificar que no sea solo espacios o caracteres especiales
-        if not any(c.isalnum() for c in v):
-            raise ValueError('La pregunta debe contener al menos un carácter alfanumérico')
-        
-        # Verificar longitud mínima después de limpiar
-        if len(v) < 3:
-            raise ValueError('La pregunta debe tener al menos 3 caracteres')
-            
-        return v
-    
-class AnswerResponse(BaseModel):
-    answer: str
-    question: str
-    status: str
+# Configuración de la aplicación
+app_config = {
+    "title": "Question Answering API",
+    "description": "API para procesamiento de preguntas y respuestas con arquitectura hexagonal",
+    "version": "1.0.0"
+}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,11 +37,14 @@ async def lifespan(app: FastAPI):
 
 # Crear aplicación FastAPI
 app = FastAPI(
-    title="Question Answering API",
-    description="API para generar embeddings y responder preguntas basadas en documentos CSV",
-    version="1.0.0",
+    title=app_config["title"],
+    description=app_config["description"],
+    version=app_config["version"],
     lifespan=lifespan
 )
+
+# Inicializar controlador
+question_controller = QuestionController()
 
 # Configurar CORS
 app.add_middleware(
@@ -72,56 +55,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Rutas eliminadas - solo mantenemos endpoints básicos
+# Incluir router del controlador
+app.include_router(question_controller.get_router())
 
-# Ruta raíz
+# Endpoint raíz
 @app.get("/")
 async def root():
-    """Endpoint raíz con información de la API"""
+    """Endpoint raíz que muestra información de la API"""
     return {
         "message": "Question Answering API",
-        "version": "1.0.0",
-        "description": "API para generar embeddings y responder preguntas",
+        "version": app_config["version"],
+        "description": app_config["description"],
         "endpoints": {
-            "answer": "/answer",
-            "health": "/health",
-            "docs": "/docs",
-            "redoc": "/redoc"
+            "/": "Información de la API",
+            "/health": "Estado de salud de la API",
+            "/docs": "Documentación interactiva (Swagger UI)",
+            "/redoc": "Documentación alternativa (ReDoc)",
+            "/answer": "Procesar pregunta (POST)"
         }
     }
 
-# Endpoint principal para responder preguntas
-@app.post("/answer", response_model=AnswerResponse)
-async def answer_question(request: QuestionRequest) -> AnswerResponse:
-    """Endpoint principal para procesar preguntas y generar respuestas
-    
-    Args:
-        request: Solicitud con la pregunta
-        
-    Returns:
-        Respuesta generada
-        
-    Raises:
-        HTTPException: Si hay error en el procesamiento
-    """
-    try:
-        # Por ahora, una respuesta simple de ejemplo
-        # Aquí se implementaría la lógica de question-answering
-        answer = f"Esta es una respuesta de ejemplo para la pregunta: {request.question}"
-        
-        return AnswerResponse(
-            answer=answer,
-            question=request.question,
-            status="success"
-        )
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al procesar la pregunta: {str(e)}"
-        )
-
-# Health check global
+# Health check
 @app.get("/health")
 async def health_check():
     """Health check global de la aplicación"""
@@ -131,7 +85,7 @@ async def health_check():
         return {
             "status": "healthy",
             "service": "question-answering-api",
-            "version": "1.0.0",
+            "version": app_config["version"],
             "config": {
                 "openai_configured": bool(config.get("openai_api_key")),
                 "model": config.get("openai_model"),
@@ -139,6 +93,7 @@ async def health_check():
             }
         }
     except Exception as e:
+        from fastapi import HTTPException
         raise HTTPException(
             status_code=500,
             detail=f"Error en health check: {str(e)}"
