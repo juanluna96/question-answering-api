@@ -44,9 +44,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Registrar rutas
-embedding_controller = dependency_container.get_embedding_controller()
-app.include_router(embedding_controller.get_router())
+# Rutas eliminadas - solo mantenemos endpoints básicos
 
 # Ruta raíz
 @app.get("/")
@@ -57,8 +55,7 @@ async def root():
         "version": "1.0.0",
         "description": "API para generar embeddings y responder preguntas",
         "endpoints": {
-            "embeddings": "/embeddings",
-            "health": "/embeddings/health",
+            "health": "/health",
             "docs": "/docs",
             "redoc": "/redoc"
         }
