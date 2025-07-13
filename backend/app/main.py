@@ -1,11 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import os
 from .infrastructure.config.dependency_container import DependencyContainer
 from .infrastructure.web.question_controller import QuestionController
 from .infrastructure.web.response_middleware import StandardResponseMiddleware
-from .infrastructure.web.response_models import create_success_response
+from .infrastructure.web.response_models import create_success_response, create_error_response
 
 # Instancia global del contenedor de dependencias
 dependency_container = DependencyContainer()
@@ -116,19 +118,52 @@ async def health_check():
         return create_error_response(
             code=500,
             message="Error en health check",
-            errors=[str(e)],
+            errors=[{"field": "general", "type": "Internal Error", "message": str(e)}],
             route="/health"
         )
 
+# Manejo de errores de validación
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Manejo de errores de validación de Pydantic"""
+    errors = []
+    for error in exc.errors():
+        field = ".".join(str(loc) for loc in error["loc"][1:])  # Omitir 'body'
+        errors.append({
+            "field": field,
+            "type": error["type"].replace("_", " ").title(),
+            "message": error["msg"].replace(f"Value error, ", "")
+        })
+    
+    error_response = create_error_response(
+        code=422,
+        message="Error de validación en los datos enviados",
+        errors=errors,
+        route=str(request.url.path)
+    )
+    
+    return JSONResponse(
+        status_code=422,
+        content=error_response.model_dump(mode='json')
+    )
+
 # Manejo de errores global
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
+async def global_exception_handler(request: Request, exc: Exception):
     """Manejo global de excepciones"""
-    return {
-        "error": "Error interno del servidor",
-        "detail": str(exc),
-        "path": str(request.url)
-    }
+    print(f"Error global: {exc}")
+    
+    error_response = create_error_response(
+        code=500,
+        message="Error interno del servidor",
+        errors=[{"field": "general", "type": "Internal Error", "message": str(exc)}],
+        route=str(request.url.path)
+    )
+    
+    return JSONResponse(
+        status_code=500,
+        content=error_response.model_dump(mode='json')
+    )
 
 if __name__ == "__main__":
     import uvicorn

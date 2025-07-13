@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Optional, Dict, Union
 from datetime import datetime
 import uuid
 
@@ -34,9 +34,9 @@ class StandardResponse(BaseModel):
     message: str = Field(
         description="Mensaje sobre la operación",
     )
-    errors: List[str] = Field(
+    errors: List[Dict[str, str]] = Field(
         default_factory=list,
-        description="Lista de errores si los hay"
+        description="Lista de errores con field, type y message"
     )
     metadata: ResponseMetadata = Field(
         description="Metadatos de la respuesta"
@@ -65,7 +65,7 @@ class ErrorResponse(StandardResponse):
         cls,
         code: int,
         message: str,
-        errors: Optional[List[str]] = None,
+        errors: Optional[List[Dict[str, str]]] = None,
         route: str = "",
         data: Any = None
     ) -> "ErrorResponse":
@@ -95,7 +95,7 @@ def create_success_response(
 def create_error_response(
     code: int,
     message: str,
-    errors: Optional[List[str]] = None,
+    errors: Optional[List[Dict[str, str]]] = None,
     route: str = "",
     data: Any = None
 ) -> StandardResponse:
