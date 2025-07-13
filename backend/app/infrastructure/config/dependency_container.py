@@ -1,6 +1,5 @@
-import os
 from typing import Optional
-from dotenv import load_dotenv
+from .settings import Settings
 from ...domain.services.embedding_manager import EmbeddingManager
 from ...application.use_cases.load_embeddings import (
     LoadEmbeddingsUseCase,
@@ -14,34 +13,26 @@ from ..web.embedding_controller import EmbeddingController
 class DependencyContainer:
     """Contenedor de dependencias para inyección de dependencias"""
     
-    def __init__(self):
-        """Inicializa el contenedor"""
-        # Cargar variables de entorno desde .env (override=True para sobrescribir variables del sistema)
-        load_dotenv(override=True)
-        self._instances = {}
-        self._config = self._load_config()
-    
-    def _load_config(self) -> dict:
-        """Carga la configuración desde variables de entorno
+    def __init__(self, settings: Optional[Settings] = None):
+        """Inicializa el contenedor
         
-        Returns:
-            Diccionario de configuración
+        Args:
+            settings: Instancia de configuración. Si no se proporciona, se crea una nueva.
         """
-        return {
-            "openai_api_key": os.getenv("OPENAI_API_KEY"),
-            "openai_model": os.getenv("OPENAI_MODEL", "text-embedding-3-small"),
-            "default_cache_path": os.getenv(
-                "DEFAULT_CACHE_PATH", 
-                "./data/cache/embeddings.pkl"
-            ),
-            "max_file_size_mb": int(os.getenv("MAX_FILE_SIZE_MB", "50")),
-            "batch_size": int(os.getenv("BATCH_SIZE", "100"))
+        self._instances = {}
+        self._settings = settings or Settings()
+        # Mantener compatibilidad con el formato anterior
+        self._config = {
+            "openai_api_key": self._settings.openai_api_key,
+            "openai_model": self._settings.embedding_model,  # Para embeddings
+            "default_cache_path": self._settings.embedding_cache_path,
+            "max_file_size_mb": self._settings.max_file_size_mb,
+            "batch_size": self._settings.batch_size
         }
     
     def get_csv_repository(self) -> CSVDocumentRepository:
         """Obtiene una instancia del repositorio CSV"""
-        max_file_size = int(self._config.get('max_file_size_mb', 50))
-        return CSVDocumentRepository(max_file_size_mb=max_file_size)
+        return CSVDocumentRepository(max_file_size_mb=self._settings.max_file_size_mb)
     
     def get_embedding_service(self) -> OpenAIEmbeddingService:
         """Obtiene el servicio de embeddings
@@ -53,15 +44,14 @@ class DependencyContainer:
             ValueError: Si no está configurada la API key
         """
         if "embedding_service" not in self._instances:
-            api_key = self._config["openai_api_key"]
-            if not api_key:
+            if not self._settings.openai_api_key:
                 raise ValueError(
                     "OPENAI_API_KEY no está configurada en las variables de entorno"
                 )
             
             self._instances["embedding_service"] = OpenAIEmbeddingService(
-                api_key=api_key,
-                model=self._config["openai_model"]
+                api_key=self._settings.openai_api_key,
+                model=self._settings.embedding_model
             )
         return self._instances["embedding_service"]
     
@@ -74,7 +64,7 @@ class DependencyContainer:
         Returns:
             Instancia del servicio
         """
-        cache_path = cache_file_path or self._config["default_cache_path"]
+        cache_path = cache_file_path or self._settings.embedding_cache_path
         cache_key = f"cache_service_{cache_path}"
         
         if cache_key not in self._instances:
@@ -144,6 +134,14 @@ class DependencyContainer:
             Diccionario de configuración
         """
         return self._config.copy()
+    
+    def get_settings(self) -> Settings:
+        """Obtiene la instancia de configuración completa
+        
+        Returns:
+            Instancia de Settings
+        """
+        return self._settings
     
     def clear_instances(self) -> None:
         """Limpia todas las instancias (útil para testing)"""

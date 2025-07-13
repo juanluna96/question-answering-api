@@ -1,5 +1,5 @@
 from typing import List, Tuple, Dict, Any, Optional
-from ...domain.entities.document import DocumentEmbedding
+from ...domain.entities.document import DocumentEmbedding, Document
 
 class ContextBuilder:
     """Servicio para construir contexto a partir de documentos recuperados (Paso 1 de Aumento)"""
@@ -57,6 +57,67 @@ class ContextBuilder:
         print(f"📊 Promedio de caracteres por documento: {total_chars // len(retrieved_documents):,}")
         
         return final_context
+    
+    async def combine_simple_documents(self, documents: List[Document]) -> str:
+        """
+        Une los textos de documentos simples para crear el contexto
+        
+        Args:
+            documents: Lista de documentos simples
+            
+        Returns:
+            Texto combinado de todos los documentos
+        """
+        if not documents:
+            print("⚠️ No hay documentos para combinar")
+            return ""
+        
+        print(f"📝 Combinando texto de {len(documents)} documentos simples...")
+        
+        combined_texts = []
+        total_chars = 0
+        
+        for i, document in enumerate(documents, 1):
+            # Crear encabezado simple del documento
+            doc_header = self._create_simple_document_header(i, document)
+            
+            # Combinar encabezado y contenido
+            doc_text = f"{doc_header}\n{document.content}"
+            
+            combined_texts.append(doc_text)
+            total_chars += len(doc_text)
+            
+            print(f"  📄 Doc {i}: {len(document.content)} chars")
+        
+        # Unir todos los textos con el separador
+        final_context = self.separator.join(combined_texts)
+        
+        print(f"✅ Contexto combinado exitosamente")
+        print(f"📊 Total de caracteres: {len(final_context):,}")
+        print(f"📊 Número de documentos: {len(documents)}")
+        print(f"📊 Promedio de caracteres por documento: {total_chars // len(documents):,}")
+        
+        return final_context
+    
+    def _create_simple_document_header(self, doc_number: int, document: Document) -> str:
+        """
+        Crea un encabezado simple para cada documento
+        
+        Args:
+            doc_number: Número del documento en la lista
+            document: Documento simple
+            
+        Returns:
+            Encabezado formateado del documento
+        """
+        # Información básica
+        header_lines = [
+            f"[DOCUMENTO {doc_number}]",
+            f"ID: {document.id}",
+            f"Longitud: {len(document.content)} caracteres"
+        ]
+        
+        return "\n".join(header_lines)
     
     def _create_document_header(
         self,
@@ -193,6 +254,51 @@ class ContextBuilder:
                 "avg_score": sum(doc_scores) / len(doc_scores) if doc_scores else 0,
                 "min_score": min(doc_scores) if doc_scores else 0,
                 "max_score": max(doc_scores) if doc_scores else 0
+            }
+        })
+        
+        # Estimación de tokens (aproximada: 1 token ≈ 4 caracteres)
+        estimated_tokens = len(context) // 4
+        stats["estimated_tokens"] = estimated_tokens
+        
+        return stats
+    
+    async def get_simple_context_statistics(
+        self,
+        context: str,
+        documents: List[Document]
+    ) -> Dict[str, Any]:
+        """
+        Obtiene estadísticas del contexto generado para documentos simples
+        
+        Args:
+            context: Contexto combinado
+            documents: Documentos originales simples
+            
+        Returns:
+            Diccionario con estadísticas del contexto
+        """
+        if not context or not documents:
+            return {"error": "Contexto o documentos vacíos"}
+        
+        # Estadísticas básicas
+        stats = {
+            "total_characters": len(context),
+            "total_words": len(context.split()),
+            "total_lines": len(context.split('\n')),
+            "total_documents": len(documents),
+            "separator_used": self.separator,
+            "separator_count": context.count(self.separator)
+        }
+        
+        # Estadísticas de documentos
+        doc_lengths = [len(doc.content) for doc in documents]
+        
+        stats.update({
+            "documents": {
+                "avg_length": sum(doc_lengths) / len(doc_lengths) if doc_lengths else 0,
+                "min_length": min(doc_lengths) if doc_lengths else 0,
+                "max_length": max(doc_lengths) if doc_lengths else 0
             }
         })
         
