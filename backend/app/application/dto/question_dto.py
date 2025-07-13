@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import Optional, Dict, Any
 
 class QuestionRequestDTO(BaseModel):
     """DTO para solicitudes de preguntas"""
@@ -27,7 +27,7 @@ class QuestionRequestDTO(BaseModel):
         return v
 
 class AnswerResponseDTO(BaseModel):
-    """DTO para respuestas de preguntas"""
+    """DTO para respuestas de preguntas con soporte para metadatos RAG"""
     
     answer: str = Field(
         description="La respuesta generada",
@@ -36,11 +36,31 @@ class AnswerResponseDTO(BaseModel):
         description="La pregunta original",
     )
     status: str = Field(
-        description="Estado de la respuesta",
+        description="Estado de la respuesta (success, error, validation_error)",
     )
     confidence: Optional[float] = Field(
         description="Nivel de confianza de la respuesta (0-1)",
+        ge=0.0,
+        le=1.0
     )
     processing_time_ms: Optional[int] = Field(
         description="Tiempo de procesamiento en milisegundos",
+        ge=0
     )
+    metadata: Optional[Dict[str, Any]] = Field(
+        description="Metadatos adicionales del proceso RAG (opcional)",
+        default=None
+    )
+    
+    @validator('status')
+    def validate_status(cls, v):
+        allowed_statuses = {'success', 'error', 'validation_error'}
+        if v not in allowed_statuses:
+            raise ValueError(f'Status debe ser uno de: {", ".join(allowed_statuses)}')
+        return v
+    
+    @validator('confidence')
+    def validate_confidence(cls, v):
+        if v is not None and (v < 0.0 or v > 1.0):
+            raise ValueError('Confidence debe estar entre 0.0 y 1.0')
+        return v
