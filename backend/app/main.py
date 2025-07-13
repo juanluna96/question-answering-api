@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 import os
 from .infrastructure.config.dependency_container import DependencyContainer
 
@@ -10,7 +10,25 @@ dependency_container = DependencyContainer()
 
 # Modelos de request y response
 class QuestionRequest(BaseModel):
-    question: str
+    question: str = Field(..., description="Pregunta a responder")
+    
+    @validator('question')
+    def validate_question(cls, v):
+        if not v or not v.strip():
+            raise ValueError('La pregunta no puede estar vacía')
+        
+        # Eliminar espacios extra
+        v = v.strip()
+        
+        # Verificar que no sea solo espacios o caracteres especiales
+        if not any(c.isalnum() for c in v):
+            raise ValueError('La pregunta debe contener al menos un carácter alfanumérico')
+        
+        # Verificar longitud mínima después de limpiar
+        if len(v) < 3:
+            raise ValueError('La pregunta debe tener al menos 3 caracteres')
+            
+        return v
     
 class AnswerResponse(BaseModel):
     answer: str
