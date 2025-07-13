@@ -1,5 +1,6 @@
 import os
 from typing import Optional
+from dotenv import load_dotenv
 from ...domain.services.embedding_manager import EmbeddingManager
 from ...application.use_cases.load_embeddings import (
     LoadEmbeddingsUseCase,
@@ -15,6 +16,8 @@ class DependencyContainer:
     
     def __init__(self):
         """Inicializa el contenedor"""
+        # Cargar variables de entorno desde .env (override=True para sobrescribir variables del sistema)
+        load_dotenv(override=True)
         self._instances = {}
         self._config = self._load_config()
     
@@ -24,6 +27,13 @@ class DependencyContainer:
         Returns:
             Diccionario de configuración
         """
+        print("Cargando configuración...")
+        print("OPENAI_API_KEY:", os.getenv("OPENAI_API_KEY"))
+        print("OPENAI_MODEL:", os.getenv("OPENAI_MODEL", "text-embedding-3-small"))
+        print("DEFAULT_CACHE_PATH:", os.getenv("DEFAULT_CACHE_PATH", "./data/cache/embeddings.pkl"))
+        print("MAX_FILE_SIZE_MB:", os.getenv("MAX_FILE_SIZE_MB", "50"))
+        print("BATCH_SIZE:", os.getenv("BATCH_SIZE", "100"))
+    
         return {
             "openai_api_key": os.getenv("OPENAI_API_KEY"),
             "openai_model": os.getenv("OPENAI_MODEL", "text-embedding-3-small"),
