@@ -1,11 +1,21 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from pydantic import BaseModel
 import os
 from .infrastructure.config.dependency_container import DependencyContainer
 
 # Instancia global del contenedor de dependencias
 dependency_container = DependencyContainer()
+
+# Modelos de request y response
+class QuestionRequest(BaseModel):
+    question: str
+    
+class AnswerResponse(BaseModel):
+    answer: str
+    question: str
+    status: str
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,11 +65,43 @@ async def root():
         "version": "1.0.0",
         "description": "API para generar embeddings y responder preguntas",
         "endpoints": {
+            "answer": "/answer",
             "health": "/health",
             "docs": "/docs",
             "redoc": "/redoc"
         }
     }
+
+# Endpoint principal para responder preguntas
+@app.post("/answer", response_model=AnswerResponse)
+async def answer_question(request: QuestionRequest) -> AnswerResponse:
+    """Endpoint principal para procesar preguntas y generar respuestas
+    
+    Args:
+        request: Solicitud con la pregunta
+        
+    Returns:
+        Respuesta generada
+        
+    Raises:
+        HTTPException: Si hay error en el procesamiento
+    """
+    try:
+        # Por ahora, una respuesta simple de ejemplo
+        # Aquí se implementaría la lógica de question-answering
+        answer = f"Esta es una respuesta de ejemplo para la pregunta: {request.question}"
+        
+        return AnswerResponse(
+            answer=answer,
+            question=request.question,
+            status="success"
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al procesar la pregunta: {str(e)}"
+        )
 
 # Health check global
 @app.get("/health")
