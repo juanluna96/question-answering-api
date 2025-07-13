@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 import os
 from .infrastructure.config.dependency_container import DependencyContainer
 from .infrastructure.web.question_controller import QuestionController
+from .infrastructure.web.response_middleware import StandardResponseMiddleware
+from .infrastructure.web.response_models import create_success_response
 
 # Instancia global del contenedor de dependencias
 dependency_container = DependencyContainer()
@@ -11,7 +13,7 @@ dependency_container = DependencyContainer()
 # Configuración de la aplicación
 app_config = {
     "title": "Question Answering API",
-    "description": "API para procesamiento de preguntas y respuestas con arquitectura hexagonal",
+    "description": "API para procesamiento de preguntas y respuestas",
     "version": "1.0.0"
 }
 
@@ -46,6 +48,10 @@ app = FastAPI(
 # Inicializar controlador
 question_controller = QuestionController()
 
+# Configurar middlewares
+# Middleware de respuesta estándar (debe ir antes que CORS)
+app.add_middleware(StandardResponseMiddleware)
+
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
@@ -62,8 +68,8 @@ app.include_router(question_controller.get_router())
 @app.get("/")
 async def root():
     """Endpoint raíz que muestra información de la API"""
-    return {
-        "message": "Question Answering API",
+    api_info = {
+        "name": "Question Answering API",
         "version": app_config["version"],
         "description": app_config["description"],
         "endpoints": {
@@ -74,6 +80,12 @@ async def root():
             "/answer": "Procesar pregunta (POST)"
         }
     }
+    
+    return create_success_response(
+        data=api_info,
+        message="Información de la API obtenida exitosamente",
+        route="/"
+    )
 
 # Health check
 @app.get("/health")
@@ -82,7 +94,7 @@ async def health_check():
     try:
         config = dependency_container.get_config()
         
-        return {
+        health_data = {
             "status": "healthy",
             "service": "question-answering-api",
             "version": app_config["version"],
@@ -92,11 +104,20 @@ async def health_check():
                 "cache_path": config.get("default_cache_path")
             }
         }
+        
+        return create_success_response(
+            data=health_data,
+            message="Servicio funcionando correctamente",
+            route="/health"
+        )
+        
     except Exception as e:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error en health check: {str(e)}"
+        from .infrastructure.web.response_models import create_error_response
+        return create_error_response(
+            code=500,
+            message="Error en health check",
+            errors=[str(e)],
+            route="/health"
         )
 
 # Manejo de errores global
