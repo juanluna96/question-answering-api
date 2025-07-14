@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 class QuestionRequestDTO(BaseModel):
     """DTO para solicitudes de preguntas"""
@@ -46,6 +46,10 @@ class AnswerResponseDTO(BaseModel):
     processing_time_ms: Optional[int] = Field(
         description="Tiempo de procesamiento en milisegundos",
         ge=0
+    )
+    sources: Optional[List[str]] = Field(
+        description="IDs de los documentos usados como fuente",
+        default=None
     )
     metadata: Optional[Dict[str, Any]] = Field(
         description="Metadatos adicionales del proceso RAG (opcional)",

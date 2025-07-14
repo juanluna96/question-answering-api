@@ -4,10 +4,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import os
+import logging
 from .infrastructure.config.dependency_container import DependencyContainer
 from .infrastructure.web.question_controller import QuestionController
 from .infrastructure.web.response_middleware import StandardResponseMiddleware
 from .infrastructure.web.response_models import create_success_response, create_error_response
+from .infrastructure.config.logging_config import LoggingConfig
 
 # Instancia global del contenedor de dependencias
 dependency_container = DependencyContainer()
@@ -22,21 +24,25 @@ app_config = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Maneja el ciclo de vida de la aplicación"""
+    # Configurar logging al inicio
+    LoggingConfig.setup_logging()
+    logger = logging.getLogger(__name__)
+    
     # Startup
-    print("🚀 Iniciando Question Answering API...")
+    logger.info("🚀 Iniciando Question Answering API...")
     
     # Verificar configuración crítica
     config = dependency_container.get_config()
     if not config.get("openai_api_key"):
-        print("⚠️  ADVERTENCIA: OPENAI_API_KEY no está configurada")
+        logger.warning("⚠️  ADVERTENCIA: OPENAI_API_KEY no está configurada")
     
-    print(f"📊 Modelo configurado: {config.get('openai_model')}")
-    print(f"💾 Caché por defecto: {config.get('default_cache_path')}")
+    logger.info(f"📊 Modelo configurado: {config.get('openai_model')}")
+    logger.info(f"💾 Caché por defecto: {config.get('default_cache_path')}")
     
     yield
     
     # Shutdown
-    print("🛑 Cerrando Question Answering API...")
+    logger.info("🛑 Cerrando Question Answering API...")
     dependency_container.clear_instances()
 
 # Crear aplicación FastAPI
@@ -151,7 +157,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Manejo global de excepciones"""
-    print(f"Error global: {exc}")
+    logger = logging.getLogger(__name__)
+    logger.error(f"Error global: {exc}", exc_info=True)
     
     error_response = create_error_response(
         code=500,

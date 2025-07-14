@@ -1,4 +1,5 @@
 from typing import List, Tuple, Dict, Any, Optional
+import logging
 from ...domain.entities.document import DocumentEmbedding, Document
 
 class ContextBuilder:
@@ -12,7 +13,8 @@ class ContextBuilder:
             separator: Separador entre documentos en el contexto
         """
         self.separator = separator
-        print(f"🔧 ContextBuilder inicializado con separador: '{separator}'")
+        self.logger = logging.getLogger(__name__)
+        self.logger.info(f"🔧 ContextBuilder inicializado con separador: '{separator}'")
     
     async def combine_documents_text(
         self,
@@ -28,10 +30,10 @@ class ContextBuilder:
             Texto combinado de todos los documentos
         """
         if not retrieved_documents:
-            print("⚠️ No hay documentos para combinar")
+            self.logger.warning("⚠️ No hay documentos para combinar")
             return ""
         
-        print(f"📝 Combinando texto de {len(retrieved_documents)} documentos...")
+        self.logger.info(f"📝 Combinando texto de {len(retrieved_documents)} documentos...")
         
         combined_texts = []
         total_chars = 0
@@ -46,15 +48,15 @@ class ContextBuilder:
             combined_texts.append(doc_text)
             total_chars += len(doc_text)
             
-            print(f"  📄 Doc {i}: {len(document.content)} chars (score: {score:.3f})")
+            self.logger.info(f"  📄 Doc {i}: {len(document.content)} chars (score: {score:.3f})")
         
         # Unir todos los textos con el separador
         final_context = self.separator.join(combined_texts)
         
-        print(f"✅ Contexto combinado exitosamente")
-        print(f"📊 Total de caracteres: {len(final_context):,}")
-        print(f"📊 Número de documentos: {len(retrieved_documents)}")
-        print(f"📊 Promedio de caracteres por documento: {total_chars // len(retrieved_documents):,}")
+        self.logger.info(f"✅ Contexto combinado exitosamente")
+        self.logger.info(f"📊 Total de caracteres: {len(final_context):,}")
+        self.logger.info(f"📊 Número de documentos: {len(retrieved_documents)}")
+        self.logger.info(f"📊 Promedio de caracteres por documento: {total_chars // len(retrieved_documents):,}")
         
         return final_context
     
@@ -69,10 +71,10 @@ class ContextBuilder:
             Texto combinado de todos los documentos
         """
         if not documents:
-            print("⚠️ No hay documentos para combinar")
+            self.logger.warning("⚠️ No hay documentos para combinar")
             return ""
         
-        print(f"📝 Combinando texto de {len(documents)} documentos simples...")
+        self.logger.info(f"📝 Combinando texto de {len(documents)} documentos simples...")
         
         combined_texts = []
         total_chars = 0
@@ -87,15 +89,15 @@ class ContextBuilder:
             combined_texts.append(doc_text)
             total_chars += len(doc_text)
             
-            print(f"  📄 Doc {i}: {len(document.content)} chars")
+            self.logger.info(f"  📄 Doc {i}: {len(document.content)} chars")
         
         # Unir todos los textos con el separador
         final_context = self.separator.join(combined_texts)
         
-        print(f"✅ Contexto combinado exitosamente")
-        print(f"📊 Total de caracteres: {len(final_context):,}")
-        print(f"📊 Número de documentos: {len(documents)}")
-        print(f"📊 Promedio de caracteres por documento: {total_chars // len(documents):,}")
+        self.logger.info(f"✅ Contexto combinado exitosamente")
+        self.logger.info(f"📊 Total de caracteres: {len(final_context):,}")
+        self.logger.info(f"📊 Número de documentos: {len(documents)}")
+        self.logger.info(f"📊 Promedio de caracteres por documento: {total_chars // len(documents):,}")
         
         return final_context
     
@@ -181,7 +183,7 @@ class ContextBuilder:
         if not retrieved_documents:
             return ""
         
-        print(f"📝 Combinando {len(retrieved_documents)} documentos con metadatos personalizados...")
+        self.logger.info(f"📝 Combinando {len(retrieved_documents)} documentos con metadatos personalizados...")
         
         combined_texts = []
         
@@ -210,7 +212,7 @@ class ContextBuilder:
         
         final_context = self.separator.join(combined_texts)
         
-        print(f"✅ Contexto con metadatos combinado: {len(final_context):,} caracteres")
+        self.logger.info(f"✅ Contexto con metadatos combinado: {len(final_context):,} caracteres")
         
         return final_context
     
@@ -317,7 +319,7 @@ class ContextBuilder:
         """
         old_separator = self.separator
         self.separator = new_separator
-        print(f"🔄 Separador actualizado: '{old_separator}' → '{new_separator}'")
+        self.logger.info(f"🔄 Separador actualizado: '{old_separator}' → '{new_separator}'")
     
     def get_configuration(self) -> Dict[str, str]:
         """

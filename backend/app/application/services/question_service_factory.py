@@ -1,7 +1,7 @@
 from typing import Optional
 from ...domain.ports.question_service_port import QuestionServicePort
 from ...infrastructure.services.rag_question_service import RAGQuestionService
-from ...infrastructure.services.simple_question_service import SimpleQuestionService
+
 from ...infrastructure.services.rag_generation_service import RAGGenerationService
 from ...infrastructure.services.rag_retrieval_service import RAGRetrievalService
 from ...infrastructure.services.openai_generation_service import OpenAIGenerationService
@@ -22,14 +22,14 @@ class QuestionServiceFactory:
         """
         self._settings = settings
         self._rag_question_service: Optional[RAGQuestionService] = None
-        self._simple_question_service: Optional[SimpleQuestionService] = None
+
     
-    def create_rag_question_service(self) -> RAGQuestionService:
+    async def create_rag_question_service(self) -> RAGQuestionService:
         """
         Crea una instancia del servicio RAG de preguntas con todas sus dependencias
         
         Returns:
-            RAGQuestionService: Servicio configurado
+            RAGQuestionService: Servicio configurado e inicializado
         """
         if self._rag_question_service is None:
             # Crear servicio de generación OpenAI
@@ -56,6 +56,30 @@ class QuestionServiceFactory:
                 cache_service=cache_service
             )
             
+            # Crear calculadoras de similitud
+            from ...infrastructure.services.semantic_similarity_calculator import SemanticSimilarityCalculator
+            from ...infrastructure.services.lexical_similarity_calculator import LexicalSimilarityCalculator
+            from ...infrastructure.services.score_combiner import ScoreCombiner
+            from ...infrastructure.services.context_builder import ContextBuilder
+            from ...infrastructure.services.context_limiter import ContextLimiter
+            
+            semantic_similarity_calculator = SemanticSimilarityCalculator(
+                embedding_service=openai_embedding
+            )
+            
+            lexical_similarity_calculator = LexicalSimilarityCalculator()
+            
+            score_combiner = ScoreCombiner(
+                semantic_weight=0.7,
+                lexical_weight=0.3
+            )
+            
+            context_builder = ContextBuilder()
+            
+            context_limiter = ContextLimiter(
+                max_tokens=self._settings.max_tokens
+            )
+            
             # Crear servicio de generación RAG
             rag_generation_service = RAGGenerationService(
                 openai_service=openai_generation
@@ -63,9 +87,58 @@ class QuestionServiceFactory:
             
             # Crear servicio de recuperación RAG
             rag_retrieval_service = RAGRetrievalService(
-                embedding_service=openai_embedding,
-                cache_service=cache_service
+                embedding_cache_reader=embedding_cache_reader,
+                semantic_similarity_calculator=semantic_similarity_calculator,
+                lexical_similarity_calculator=lexical_similarity_calculator,
+                score_combiner=score_combiner,
+                context_builder=context_builder,
+                context_limiter=context_limiter
             )
+            
+            # Inicializar el servicio de recuperación
+            initialization_success = await rag_retrieval_service.initialize()
+            if not initialization_success:
+                # Intentar crear embeddings automáticamente
+                print("No se pudieron cargar embeddings desde caché. Intentando crear embeddings automáticamente...")
+                
+                # Definir la ruta del CSV fuera del bloque try
+                csv_path = self._settings.documents_csv_path
+                
+                try:
+                    # Importar dependencias necesarias
+                    from ...infrastructure.config.dependency_container import DependencyContainer
+                    
+                    # Crear contenedor de dependencias y caso de uso
+                    dependency_container = DependencyContainer(self._settings)
+                    load_embeddings_use_case = dependency_container.get_load_embeddings_use_case()
+                    
+                    result = await load_embeddings_use_case.execute(
+                        csv_file_path=csv_path,
+                        cache_file_path=self._settings.embedding_cache_path,
+                        force_regenerate=False
+                    )
+                    print(f"Embeddings creados exitosamente: {result.message}")
+                    
+                    # Limpiar caché en memoria para forzar recarga desde archivo
+                    embedding_cache_reader.clear_cache()
+                    
+                    # Intentar inicializar nuevamente con force_reload
+                    embeddings_data = await embedding_cache_reader.load_embeddings_from_cache(force_reload=True)
+                    if embeddings_data:
+                        rag_retrieval_service._documents_cache = embeddings_data
+                        rag_retrieval_service._is_initialized = True
+                        initialization_success = True
+                    else:
+                        initialization_success = False
+                    if not initialization_success:
+                        raise RuntimeError("Falló la inicialización después de crear embeddings")
+                        
+                except Exception as create_error:
+                    raise RuntimeError(
+                        f"No se pudo inicializar el servicio de recuperación RAG. "
+                        f"Error al crear embeddings automáticamente: {create_error}. "
+                        f"Asegúrate de que el archivo CSV existe en '{csv_path}' o usa el endpoint /embeddings/load para cargar embeddings manualmente."
+                    )
             
             # Crear el servicio principal RAG
             self._rag_question_service = RAGQuestionService(
@@ -75,99 +148,16 @@ class QuestionServiceFactory:
         
         return self._rag_question_service
     
-    def create_simple_question_service(self) -> SimpleQuestionService:
-        """
-        Crea una instancia del servicio simple de preguntas (para testing/fallback)
-        
-        Returns:
-            SimpleQuestionService: Servicio simple configurado
-        """
-        if self._simple_question_service is None:
-            self._simple_question_service = SimpleQuestionService()
-        
-        return self._simple_question_service
+
     
-    def create_question_service(self, use_rag: bool = True) -> QuestionServicePort:
+    async def create_question_service(self, use_rag: bool = True) -> QuestionServicePort:
         """
-        Crea el servicio de preguntas apropiado según la configuración
+        Crea el servicio de preguntas RAG
         
         Args:
-            use_rag: Si usar el servicio RAG (True) o el simple (False)
+            use_rag: Parámetro mantenido por compatibilidad (siempre usa RAG)
             
         Returns:
-            QuestionServicePort: Servicio de preguntas configurado
+            QuestionServicePort: Servicio de preguntas RAG configurado
         """
-        if use_rag and self._settings.enable_rag:
-            return self.create_rag_question_service()
-        else:
-            return self.create_simple_question_service()
-    
-    def get_service_info(self) -> dict:
-        """
-        Obtiene información sobre los servicios disponibles
-        
-        Returns:
-            dict: Información de configuración
-        """
-        return {
-            'rag_enabled': self._settings.enable_rag,
-            'openai_model': self._settings.openai_model,
-            'embedding_model': self._settings.embedding_model,
-            'max_tokens': self._settings.max_tokens,
-            'temperature': self._settings.temperature,
-            'cache_path': self._settings.embedding_cache_path,
-            'services_initialized': {
-                'rag_service': self._rag_question_service is not None,
-                'simple_service': self._simple_question_service is not None
-            }
-        }
-    
-    async def health_check(self) -> dict:
-        """
-        Verifica el estado de salud de los servicios
-        
-        Returns:
-            dict: Estado de salud de los servicios
-        """
-        health_status = {
-            'factory_status': 'healthy',
-            'services': {}
-        }
-        
-        try:
-            # Verificar servicio RAG si está habilitado
-            if self._settings.enable_rag:
-                if self._rag_question_service:
-                    # Verificar que el servicio puede procesar una pregunta simple
-                    test_result = await self._rag_question_service.validate_question("test")
-                    health_status['services']['rag_service'] = {
-                        'status': 'healthy' if test_result else 'warning',
-                        'message': 'Service responding' if test_result else 'Validation issues'
-                    }
-                else:
-                    health_status['services']['rag_service'] = {
-                        'status': 'not_initialized',
-                        'message': 'Service not created yet'
-                    }
-            
-            # Verificar servicio simple
-            if self._simple_question_service:
-                test_result = await self._simple_question_service.validate_question("test")
-                health_status['services']['simple_service'] = {
-                    'status': 'healthy' if test_result else 'warning',
-                    'message': 'Service responding' if test_result else 'Validation issues'
-                }
-            
-        except Exception as e:
-            health_status['factory_status'] = 'error'
-            health_status['error'] = str(e)
-        
-        return health_status
-    
-    def cleanup(self):
-        """
-        Limpia los recursos de los servicios
-        """
-        # Reset de las instancias para forzar recreación
-        self._rag_question_service = None
-        self._simple_question_service = None
+        return await self.create_rag_question_service()

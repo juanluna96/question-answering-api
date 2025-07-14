@@ -1,5 +1,6 @@
 import re
 import numpy as np
+import logging
 from typing import List, Optional
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -30,10 +31,10 @@ class LexicalSimilarityCalculator:
             Lista de tuplas (DocumentEmbedding, similarity_score)
         """
         if not document_embeddings:
-            print("⚠️ No hay documentos para calcular similitud lexical")
+            logging.warning("No hay documentos para calcular similitud lexical")
             return []
         
-        print(f"📝 Calculando similitud lexical para {len(document_embeddings)} documentos...")
+        logging.info(f"Calculando similitud lexical para {len(document_embeddings)} documentos...")
         
         # Paso 1: Extraer contenido de documentos
         documents_text = [doc.content for doc in document_embeddings]
@@ -42,7 +43,7 @@ class LexicalSimilarityCalculator:
         processed_query = self._preprocess_text(query)
         processed_docs = [self._preprocess_text(doc) for doc in documents_text]
         
-        print(f"🔤 Textos preprocesados (query: '{processed_query[:50]}...')")
+        logging.debug(f"Textos preprocesados (query: '{processed_query[:50]}...')")
         
         # Paso 3: Calcular similitudes TF-IDF
         similarities = await self._compute_tfidf_similarities(
@@ -53,10 +54,10 @@ class LexicalSimilarityCalculator:
         # Paso 4: Combinar documentos con sus scores
         results = list(zip(document_embeddings, similarities))
         
-        print(f"✅ Similitud lexical calculada")
-        print(f"📈 Score promedio: {np.mean(similarities):.4f}")
-        print(f"📈 Score máximo: {max(similarities):.4f}")
-        print(f"📈 Score mínimo: {min(similarities):.4f}")
+        logging.info(f"Similitud lexical calculada")
+        logging.info(f"Score promedio: {np.mean(similarities):.4f}")
+        logging.info(f"Score máximo: {max(similarities):.4f}")
+        logging.info(f"Score mínimo: {min(similarities):.4f}")
         
         return results
     
@@ -90,7 +91,7 @@ class LexicalSimilarityCalculator:
                 token_pattern=r'\b[a-záéíóúñü]{2,}\b'  # Tokens de al menos 2 caracteres
             )
             
-            print(f"🔧 Configurando TF-IDF con corpus de {len(corpus)} textos...")
+            logging.debug(f"Configurando TF-IDF con corpus de {len(corpus)} textos...")
             
             # Ajustar y transformar corpus
             tfidf_matrix = self.tfidf_vectorizer.fit_transform(corpus)
@@ -103,9 +104,9 @@ class LexicalSimilarityCalculator:
             try:
                 matrix_shape = getattr(tfidf_matrix, 'shape', 'unknown')
                 vocab_size = len(self.tfidf_vectorizer.vocabulary_)
-                print(f"📊 Matriz TF-IDF: {matrix_shape}, Vocabulario: {vocab_size}")
+                logging.debug(f"Matriz TF-IDF: {matrix_shape}, Vocabulario: {vocab_size}")
             except Exception:
-                print("📊 Matriz TF-IDF creada exitosamente")
+                logging.debug("Matriz TF-IDF creada exitosamente")
             
             # Calcular similitud coseno
             similarities = cosine_similarity(query_vec, doc_matrix)[0]
@@ -116,11 +117,11 @@ class LexicalSimilarityCalculator:
             return similarities.tolist()
             
         except ValueError as e:
-            print(f"⚠️ Error en TF-IDF (vocabulario insuficiente): {e}")
+            logging.warning(f"Error en TF-IDF (vocabulario insuficiente): {e}")
             # Retornar scores uniformes bajos
             return [0.1] * len(documents)
         except Exception as e:
-            print(f"❌ Error calculando similitud lexical: {e}")
+            logging.error(f"Error calculando similitud lexical: {e}")
             # Retornar scores uniformes muy bajos
             return [0.05] * len(documents)
     
@@ -177,10 +178,10 @@ class LexicalSimilarityCalculator:
         # Retornar top_k
         top_results = similarities[:top_k]
         
-        print(f"🏆 Top {len(top_results)} documentos más similares lexicalmente:")
+        logging.info(f"Top {len(top_results)} documentos más similares lexicalmente:")
         for i, (doc, score) in enumerate(top_results, 1):
             content_preview = doc.content[:100] + "..." if len(doc.content) > 100 else doc.content
-            print(f"  {i}. Score: {score:.4f} - {content_preview}")
+            logging.debug(f"  {i}. Score: {score:.4f} - {content_preview}")
         
         return top_results
     

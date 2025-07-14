@@ -1,6 +1,8 @@
 import numpy as np
-from typing import List
+from typing import List, Tuple, Optional
 from sklearn.metrics.pairwise import cosine_similarity
+import logging
+
 from ...domain.entities.document import DocumentEmbedding
 from ...domain.ports.embedding_service import EmbeddingService
 
@@ -26,14 +28,14 @@ class SemanticSimilarityCalculator:
             Lista de tuplas (DocumentEmbedding, similarity_score)
         """
         if not document_embeddings:
-            print("⚠️ No hay documentos para calcular similitud")
+            logging.warning("No hay documentos para calcular similitud")
             return []
         
-        print(f"🔍 Calculando similitud semántica para {len(document_embeddings)} documentos...")
+        logging.info(f"🔍 Calculando similitud semántica para {len(document_embeddings)} documentos...")
         
         # Paso 1: Generar embedding de la consulta
         query_embedding = await self.embedding_service.generate_embedding(query)
-        print(f"📊 Embedding de consulta generado (dimensión: {len(query_embedding)})")
+        logging.debug(f"📊 Embedding de consulta generado (dimensión: {len(query_embedding)})")
         
         # Paso 2: Extraer embeddings de documentos
         doc_embeddings_matrix = [doc.embedding for doc in document_embeddings]
@@ -47,10 +49,10 @@ class SemanticSimilarityCalculator:
         # Paso 4: Combinar documentos con sus scores
         results = list(zip(document_embeddings, similarities))
         
-        print(f"✅ Similitud semántica calculada")
-        print(f"📈 Score promedio: {np.mean(similarities):.4f}")
-        print(f"📈 Score máximo: {max(similarities):.4f}")
-        print(f"📈 Score mínimo: {min(similarities):.4f}")
+        logging.info(f"✅ Similitud semántica calculada")
+        logging.info(f"📈 Score promedio: {np.mean(similarities):.4f}")
+        logging.info(f"📈 Score máximo: {max(similarities):.4f}")
+        logging.info(f"📈 Score mínimo: {min(similarities):.4f}")
         
         return results
     
@@ -91,7 +93,7 @@ class SemanticSimilarityCalculator:
             return normalized_scores.tolist()
             
         except Exception as e:
-            print(f"❌ Error calculando similitud semántica: {e}")
+            logging.error(f"❌ Error calculando similitud semántica: {e}")
             # Retornar scores uniformes en caso de error
             return [0.1] * len(document_embeddings)
     
@@ -121,10 +123,10 @@ class SemanticSimilarityCalculator:
         # Retornar top_k
         top_results = similarities[:top_k]
         
-        print(f"🏆 Top {len(top_results)} documentos más similares:")
+        logging.info(f"🏆 Top {len(top_results)} documentos más similares:")
         for i, (doc, score) in enumerate(top_results, 1):
             content_preview = doc.content[:100] + "..." if len(doc.content) > 100 else doc.content
-            print(f"  {i}. Score: {score:.4f} - {content_preview}")
+            logging.debug(f"  {i}. Score: {score:.4f} - {content_preview}")
         
         return top_results
     

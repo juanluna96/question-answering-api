@@ -4,6 +4,7 @@ from openai import OpenAI
 import os
 from datetime import datetime
 import json
+import logging
 
 class OpenAIGenerationService:
     """Servicio para generación de respuestas usando GPT-4o-mini (Paso 3 - Generación)"""
@@ -16,6 +17,7 @@ class OpenAIGenerationService:
         temperature: float = 0.1,
         timeout: int = 30
     ):
+        self.logger = logging.getLogger(__name__)
         """
         Inicializa el servicio de generación con OpenAI
         
@@ -49,11 +51,11 @@ class OpenAIGenerationService:
             "failed_requests": 0
         }
         
-        print(f"🤖 OpenAIGenerationService inicializado:")
-        print(f"   🎯 Modelo: {model}")
-        print(f"   📊 Max tokens: {max_tokens}")
-        print(f"   🌡️ Temperature: {temperature}")
-        print(f"   ⏱️ Timeout: {timeout}s")
+        self.logger.info(f"🤖 OpenAIGenerationService inicializado:")
+        self.logger.info(f"   🎯 Modelo: {model}")
+        self.logger.info(f"   📊 Max tokens: {max_tokens}")
+        self.logger.info(f"   🌡️ Temperature: {temperature}")
+        self.logger.info(f"   ⏱️ Timeout: {timeout}s")
         
         # Verificar conexión con OpenAI
         self._verify_connection()
@@ -63,7 +65,7 @@ class OpenAIGenerationService:
         Verifica la conexión con OpenAI y la validez del modelo
         """
         try:
-            print("🔍 Verificando conexión con OpenAI...")
+            self.logger.info("🔍 Verificando conexión con OpenAI...")
             
             # Hacer una request de prueba simple
             test_response = self.client.chat.completions.create(
@@ -77,17 +79,17 @@ class OpenAIGenerationService:
             )
             
             if test_response.choices and test_response.choices[0].message.content:
-                print("✅ Conexión con OpenAI verificada exitosamente")
-                print(f"   📝 Respuesta de prueba: {test_response.choices[0].message.content.strip()}")
+                self.logger.info("✅ Conexión con OpenAI verificada exitosamente")
+                self.logger.info(f"   📝 Respuesta de prueba: {test_response.choices[0].message.content.strip()}")
                 
                 # Actualizar estadísticas
                 if test_response.usage:
-                    print(f"   📊 Tokens usados en prueba: {test_response.usage.total_tokens}")
+                    self.logger.info(f"   📊 Tokens usados en prueba: {test_response.usage.total_tokens}")
             else:
-                print("⚠️ Conexión establecida pero respuesta vacía")
+                self.logger.warning("⚠️ Conexión establecida pero respuesta vacía")
                 
         except Exception as e:
-            print(f"❌ Error al verificar conexión con OpenAI: {str(e)}")
+            self.logger.error(f"❌ Error al verificar conexión con OpenAI: {str(e)}")
             raise ConnectionError(f"No se pudo conectar con OpenAI: {str(e)}")
     
     async def generate_response(
@@ -109,9 +111,9 @@ class OpenAIGenerationService:
         Returns:
             Diccionario con respuesta y metadatos
         """
-        print(f"🚀 Generando respuesta con {self.model}...")
-        print(f"   📋 Sistema: {len(system_prompt)} caracteres")
-        print(f"   👤 Usuario: {len(user_prompt)} caracteres")
+        self.logger.info(f"🚀 Generando respuesta con {self.model}...")
+        self.logger.info(f"   📋 Sistema: {len(system_prompt)} caracteres")
+        self.logger.info(f"   👤 Usuario: {len(user_prompt)} caracteres")
         
         # Usar configuración personalizada o por defecto
         max_tokens = custom_max_tokens or self.max_tokens
@@ -180,12 +182,12 @@ class OpenAIGenerationService:
                 "success": True
             }
             
-            print(f"✅ Respuesta generada exitosamente:")
-            print(f"   📝 Longitud: {len(answer)} caracteres")
-            print(f"   ⏱️ Tiempo: {response_time:.2f}s")
+            self.logger.info(f"✅ Respuesta generada exitosamente:")
+            self.logger.info(f"   📝 Longitud: {len(answer)} caracteres")
+            self.logger.info(f"   ⏱️ Tiempo: {response_time:.2f}s")
             if usage_info:
-                print(f"   📊 Tokens: {usage_info.get('total_tokens', 'N/A')}")
-                print(f"   💰 Costo estimado: ${total_cost:.6f}")
+                self.logger.info(f"   📊 Tokens: {usage_info.get('total_tokens', 'N/A')}")
+                self.logger.info(f"   💰 Costo estimado: ${total_cost:.6f}")
             
             return generation_result
             
@@ -207,7 +209,7 @@ class OpenAIGenerationService:
                 }
             }
             
-            print(f"❌ Error al generar respuesta: {str(e)}")
+            self.logger.error(f"❌ Error al generar respuesta: {str(e)}")
             return error_result
     
     def get_usage_statistics(self) -> Dict[str, Any]:
@@ -240,7 +242,7 @@ class OpenAIGenerationService:
             "successful_requests": 0,
             "failed_requests": 0
         }
-        print("📊 Estadísticas de uso reiniciadas")
+        self.logger.info("📊 Estadísticas de uso reiniciadas")
     
     def update_configuration(
         self,
@@ -261,22 +263,22 @@ class OpenAIGenerationService:
         if model is not None:
             old_model = self.model
             self.model = model
-            print(f"🔄 Modelo actualizado: '{old_model}' → '{model}'")
+            self.logger.info(f"🔄 Modelo actualizado: '{old_model}' → '{model}'")
         
         if max_tokens is not None:
             old_tokens = self.max_tokens
             self.max_tokens = max_tokens
-            print(f"🔄 Max tokens actualizado: {old_tokens} → {max_tokens}")
+            self.logger.info(f"🔄 Max tokens actualizado: {old_tokens} → {max_tokens}")
         
         if temperature is not None:
             old_temp = self.temperature
             self.temperature = temperature
-            print(f"🔄 Temperature actualizada: {old_temp} → {temperature}")
+            self.logger.info(f"🔄 Temperature actualizada: {old_temp} → {temperature}")
         
         if timeout is not None:
             old_timeout = self.timeout
             self.timeout = timeout
-            print(f"🔄 Timeout actualizado: {old_timeout}s → {timeout}s")
+            self.logger.info(f"🔄 Timeout actualizado: {old_timeout}s → {timeout}s")
     
     def get_configuration(self) -> Dict[str, Any]:
         """
@@ -305,7 +307,7 @@ class OpenAIGenerationService:
             True si el modelo está disponible, False en caso contrario
         """
         try:
-            print(f"🧪 Probando disponibilidad del modelo: {model_name}")
+            self.logger.info(f"🧪 Probando disponibilidad del modelo: {model_name}")
             
             test_response = self.client.chat.completions.create(
                 model=model_name,
@@ -318,12 +320,12 @@ class OpenAIGenerationService:
             )
             
             if test_response.choices:
-                print(f"✅ Modelo {model_name} disponible")
+                self.logger.info(f"✅ Modelo {model_name} disponible")
                 return True
             else:
-                print(f"❌ Modelo {model_name} no disponible")
+                self.logger.warning(f"❌ Modelo {model_name} no disponible")
                 return False
                 
         except Exception as e:
-            print(f"❌ Error al probar modelo {model_name}: {str(e)}")
+            self.logger.error(f"❌ Error al probar modelo {model_name}: {str(e)}")
             return False
