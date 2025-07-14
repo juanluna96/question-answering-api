@@ -23,3 +23,14 @@ out/
 
 # Next.js specific
 .next/
+
+# Variables de entorno
+.env
+
+# Archivos de caché
+.cache/
+.cache-loader/
+.cache-loader/*
+.node-gyp/
+node-gyp/
+npm-debug.log
