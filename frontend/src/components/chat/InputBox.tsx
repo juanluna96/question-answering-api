@@ -6,19 +6,21 @@ interface InputBoxProps {
   onInputChange?: (value: string) => void;
   placeholder?: string;
   buttonText?: string;
+  isLoading?: boolean;
 }
 
 export const InputBox = ({ 
   onSubmit, 
   onInputChange,
   placeholder = "Escribe tu pregunta...", 
-  buttonText = "Enviar" 
+  buttonText = "Enviar",
+  isLoading = false
 }: InputBoxProps) => {
   const [inputValue, setInputValue] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim() && onSubmit) {
+    if (inputValue.trim() && onSubmit && !isLoading) {
       onSubmit(inputValue.trim());
       setInputValue('');
       // Notificar que el input está vacío después del envío
@@ -46,14 +48,15 @@ export const InputBox = ({
             value={inputValue}
             onChange={handleInputChange}
             placeholder={placeholder}
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-500"
+            disabled={isLoading}
+            className="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-500"
           />
           <button
             type="submit"
-            disabled={!inputValue.trim()}
+            disabled={!inputValue.trim() || isLoading}
             className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           >
-            {buttonText}
+            {isLoading ? "Enviando..." : buttonText}
           </button>
         </form>
       </div>
