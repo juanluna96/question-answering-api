@@ -1,9 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, ReactNode } from "react";
 import * as THREE from "three";
 
-export const VantaBackground = () => {
+interface VantaBackgroundProps {
+  children?: ReactNode;
+}
+
+export const VantaBackground = ({ children }: VantaBackgroundProps) => {
   const [vantaEffect, setVantaEffect] = useState(0);
   const vantaRef = useRef(null);
 
@@ -73,10 +77,11 @@ export const VantaBackground = () => {
   }, [vantaEffect]);
   
   return (
-    <div ref={vantaRef} style={{ height: "100vh" }}>
-      <p style={{ color: "#fff", paddingTop: "20px" }}>
-        Animated website backgrounds in a few lines of code.
-      </p>
+    <div 
+      ref={vantaRef} 
+      className="h-screen flex items-center justify-center relative"
+    >
+      {children}
     </div>
   );
 };
