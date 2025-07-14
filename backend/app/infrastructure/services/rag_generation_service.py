@@ -1,6 +1,7 @@
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import asyncio
+import logging
 
 from .openai_generation_service import OpenAIGenerationService
 from .prompt_builder import PromptBuilder
@@ -17,6 +18,7 @@ class RAGGenerationService:
         default_max_tokens: int = 1000,
         default_temperature: float = 0.1
     ):
+        self.logger = logging.getLogger(__name__)
         """
         Inicializa el servicio de generación RAG
         
@@ -46,10 +48,10 @@ class RAGGenerationService:
             "average_response_time": 0
         }
         
-        print(f"🔗 RAGGenerationService inicializado:")
-        print(f"   🤖 Modelo: {self.openai_service.model}")
-        print(f"   📊 Max tokens: {self.openai_service.max_tokens}")
-        print(f"   🌡️ Temperature: {self.openai_service.temperature}")
+        self.logger.info(f"🔗 RAGGenerationService inicializado:")
+        self.logger.info(f"   🤖 Modelo: {self.openai_service.model}")
+        self.logger.info(f"   📊 Max tokens: {self.openai_service.max_tokens}")
+        self.logger.info(f"   🌡️ Temperature: {self.openai_service.temperature}")
     
     async def generate_answer(
         self,
@@ -76,9 +78,9 @@ class RAGGenerationService:
         Returns:
             Diccionario con respuesta y metadatos completos
         """
-        print(f"🚀 Iniciando generación RAG...")
-        print(f"   ❓ Pregunta: {question[:100]}{'...' if len(question) > 100 else ''}")
-        print(f"   📚 Documentos: {len(retrieved_documents)}")
+        self.logger.info(f"🚀 Iniciando generación RAG...")
+        self.logger.info(f"   ❓ Pregunta: {question[:100]}{'...' if len(question) > 100 else ''}")
+        self.logger.info(f"   📚 Documentos: {len(retrieved_documents)}")
         
         start_time = datetime.now()
         
@@ -88,7 +90,7 @@ class RAGGenerationService:
             self.rag_stats["total_documents_processed"] += len(retrieved_documents)
             
             # Paso 1.2a: Construir prompt con contexto
-            print("📝 Construyendo prompt con contexto...")
+            self.logger.info("📝 Construyendo prompt con contexto...")
             
             # Primero necesitamos construir el contexto de los documentos
             from .context_builder import ContextBuilder
@@ -127,10 +129,10 @@ class RAGGenerationService:
                 context=context_text
             )
             
-            print(f"   ✅ Prompt construido:")
-            print(f"      📋 Sistema: {len(system_prompt)} caracteres")
-            print(f"      👤 Usuario: {len(user_prompt)} caracteres")
-            print(f"      📊 Contexto estimado: {prompt_metadata.get('estimated_total_length', 'N/A')} caracteres")
+            self.logger.info(f"   ✅ Prompt construido:")
+            self.logger.info(f"      📋 Sistema: {len(system_prompt)} caracteres")
+            self.logger.info(f"      👤 Usuario: {len(user_prompt)} caracteres")
+            self.logger.info(f"      📊 Contexto estimado: {prompt_metadata.get('estimated_total_length', 'N/A')} caracteres")
             
             # Actualizar estadística de longitud de contexto
             context_length = int(prompt_metadata.get('estimated_total_length', '0'))
@@ -142,7 +144,7 @@ class RAGGenerationService:
                 self.rag_stats["average_context_length"] = context_length
             
             # Paso 1.2b: Enviar a OpenAI
-            print("🤖 Enviando a OpenAI...")
+            self.logger.info("🤖 Enviando pregunta a OpenAI...")
             
             generation_result = await self.openai_service.generate_response(
                 system_prompt=system_prompt,
@@ -154,7 +156,7 @@ class RAGGenerationService:
             # Verificar si la generación fue exitosa
             if not generation_result.get("success", False):
                 self.rag_stats["failed_generations"] += 1
-                print(f"❌ Error en generación: {generation_result.get('error', 'Error desconocido')}")
+                self.logger.error(f"❌ Error en generación: {generation_result.get('error', 'Error desconocido')}")
                 return self._build_error_response(
                     question=question,
                     retrieved_documents=retrieved_documents,
@@ -211,17 +213,17 @@ class RAGGenerationService:
                     }
                 }
             
-            print(f"✅ Respuesta RAG generada exitosamente:")
-            print(f"   📝 Respuesta: {len(rag_response['answer'])} caracteres")
-            print(f"   📚 Documentos fuente: {len(source_document_ids)}")
-            print(f"   ⏱️ Tiempo total: {total_time:.2f}s")
+            self.logger.info(f"✅ Respuesta RAG generada exitosamente:")
+            self.logger.info(f"   📝 Respuesta: {len(rag_response['answer'])} caracteres")
+            self.logger.info(f"   📚 Documentos fuente: {len(source_document_ids)}")
+            self.logger.info(f"   ⏱️ Tiempo total: {total_time:.2f}s")
             
             return rag_response
             
         except Exception as e:
             # Manejar errores inesperados
             self.rag_stats["failed_generations"] += 1
-            print(f"❌ Error inesperado en generación RAG: {str(e)}")
+            self.logger.error(f"❌ Error inesperado en generación RAG: {str(e)}")
             
             return self._build_error_response(
                 question=question,
@@ -279,7 +281,7 @@ class RAGGenerationService:
         Returns:
             Diccionario con respuesta
         """
-        print(f"🔄 Generación simple con contexto de texto...")
+        self.logger.info(f"🔄 Generación simple con contexto de texto...")
         
         # Crear prompt simple
         system_prompt = self.prompt_builder.system_instructions
@@ -342,7 +344,7 @@ class RAGGenerationService:
         }
         
         self.openai_service.reset_statistics()
-        print("📊 Estadísticas RAG reiniciadas")
+        self.logger.info("📊 Estadísticas RAG reiniciadas")
     
     def update_configuration(
         self,
@@ -370,7 +372,7 @@ class RAGGenerationService:
         # Actualizar prompt builder
         if system_instructions is not None:
             self.prompt_builder.update_configuration(system_instructions=system_instructions)
-            print(f"🔄 Instrucciones del sistema actualizadas")
+            self.logger.info(f"🔄 Instrucciones del sistema actualizadas")
     
     def get_configuration(self) -> Dict[str, Any]:
         """

@@ -1,4 +1,5 @@
 from typing import List, Optional
+import logging
 from ...domain.entities.document import DocumentEmbedding
 from ...domain.ports.cache_service import CacheService
 
@@ -24,7 +25,7 @@ class EmbeddingCacheReader:
         """
         # Si ya están cargados en memoria y no se fuerza recarga
         if self._cached_embeddings is not None and not force_reload:
-            print(f"📋 Usando embeddings desde memoria: {len(self._cached_embeddings)} documentos")
+            logging.info(f"📋 Usando embeddings desde memoria: {len(self._cached_embeddings)} documentos")
             return self._cached_embeddings
         
         # Verificar si existe el caché
@@ -32,7 +33,7 @@ class EmbeddingCacheReader:
         if not cache_exists:
             raise Exception("No se encontró el archivo de caché de embeddings (embeddings.pkl)")
         
-        print("📦 Cargando embeddings desde caché...")
+        logging.info("📦 Cargando embeddings desde caché...")
         
         # Cargar embeddings desde archivo
         embeddings = await self.cache_service.load_embeddings()
@@ -43,8 +44,8 @@ class EmbeddingCacheReader:
         # Guardar en memoria para futuras consultas
         self._cached_embeddings = embeddings
         
-        print(f"✅ Cargados {len(embeddings)} embeddings desde caché")
-        print(f"📊 Dimensión de embeddings: {len(embeddings[0].embedding) if embeddings else 0}")
+        logging.info(f"✅ Cargados {len(embeddings)} embeddings desde caché")
+        logging.info(f"📊 Dimensión de embeddings: {len(embeddings[0].embedding) if embeddings else 0}")
         
         return embeddings
     
@@ -77,7 +78,7 @@ class EmbeddingCacheReader:
         Limpia el caché de memoria
         """
         self._cached_embeddings = None
-        print("🗑️ Caché de embeddings limpiado de memoria")
+        logging.info("🗑️ Caché de embeddings limpiado de memoria")
     
     def is_cache_loaded(self) -> bool:
         """

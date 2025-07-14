@@ -1,4 +1,5 @@
 from typing import List, Tuple, Dict, Any, Optional
+import logging
 from ...domain.entities.document import DocumentEmbedding
 
 class ContextLimiter:
@@ -10,6 +11,7 @@ class ContextLimiter:
         chars_per_token: float = 4.0,
         preserve_strategy: str = "top_scores"
     ):
+        self.logger = logging.getLogger(__name__)
         """
         Inicializa el limitador de contexto
         
@@ -23,10 +25,10 @@ class ContextLimiter:
         self.max_chars = int(max_tokens * chars_per_token)
         self.preserve_strategy = preserve_strategy
         
-        print(f"🔧 ContextLimiter inicializado:")
-        print(f"   📊 Máximo tokens: {max_tokens:,}")
-        print(f"   📊 Máximo caracteres: {self.max_chars:,}")
-        print(f"   🎯 Estrategia: {preserve_strategy}")
+        self.logger.info(f"🔧 ContextLimiter inicializado:")
+        self.logger.info(f"   📊 Máximo tokens: {max_tokens:,}")
+        self.logger.info(f"   📊 Máximo caracteres: {self.max_chars:,}")
+        self.logger.info(f"   🎯 Estrategia: {preserve_strategy}")
     
     async def limit_context_length(
         self,
@@ -45,11 +47,11 @@ class ContextLimiter:
         Returns:
             Tupla con (contexto_limitado, estadísticas_limitación)
         """
-        print(f"📏 Limitando contexto de {len(context):,} caracteres...")
+        self.logger.info(f"📏 Limitando contexto de {len(context):,} caracteres...")
         
         # Verificar si el contexto ya está dentro de los límites
         if len(context) <= self.max_chars:
-            print(f"✅ Contexto dentro de límites: {len(context):,} ≤ {self.max_chars:,}")
+            self.logger.info(f"✅ Contexto dentro de límites: {len(context):,} ≤ {self.max_chars:,}")
             return context, {
                 "limited": False,
                 "original_length": len(context),
@@ -59,8 +61,8 @@ class ContextLimiter:
                 "strategy_used": "none"
             }
         
-        print(f"⚠️ Contexto excede límites: {len(context):,} > {self.max_chars:,}")
-        print(f"🔄 Aplicando estrategia: {self.preserve_strategy}")
+        self.logger.warning(f"⚠️ Contexto excede límites: {len(context):,} > {self.max_chars:,}")
+        self.logger.info(f"🔄 Aplicando estrategia: {self.preserve_strategy}")
         
         # Aplicar estrategia de limitación
         if self.preserve_strategy == "top_scores":
@@ -77,7 +79,7 @@ class ContextLimiter:
             )
         else:
             # Fallback a top_scores
-            print(f"⚠️ Estrategia desconocida '{self.preserve_strategy}', usando 'top_scores'")
+            self.logger.warning(f"⚠️ Estrategia desconocida '{self.preserve_strategy}', usando 'top_scores'")
             limited_context, stats = await self._limit_by_top_scores(
                 retrieved_documents, separator
             )
@@ -91,11 +93,11 @@ class ContextLimiter:
             "strategy_used": self.preserve_strategy
         })
         
-        print(f"✅ Contexto limitado exitosamente:")
-        print(f"   📊 Longitud original: {len(context):,} caracteres")
-        print(f"   📊 Longitud final: {len(limited_context):,} caracteres")
-        print(f"   📊 Reducción: {stats['reduction_percentage']:.1f}%")
-        print(f"   📊 Documentos conservados: {stats['documents_kept']}/{len(retrieved_documents)}")
+        self.logger.info(f"✅ Contexto limitado exitosamente:")
+        self.logger.info(f"   📊 Longitud original: {len(context):,} caracteres")
+        self.logger.info(f"   📊 Longitud final: {len(limited_context):,} caracteres")
+        self.logger.info(f"   📊 Reducción: {stats['reduction_percentage']:.1f}%")
+        self.logger.info(f"   📊 Documentos conservados: {stats['documents_kept']}/{len(retrieved_documents)}")
         
         return limited_context, stats
     
@@ -107,7 +109,7 @@ class ContextLimiter:
         """
         Limita el contexto preservando documentos con mejores scores
         """
-        print("🏆 Aplicando estrategia: Top Scores")
+        self.logger.info("🏆 Aplicando estrategia: Top Scores")
         
         # Los documentos ya vienen ordenados por score (descendente)
         selected_docs = []
@@ -128,9 +130,9 @@ class ContextLimiter:
             if current_length + additional_length <= self.max_chars:
                 selected_docs.append((document, score, details))
                 current_length += additional_length
-                print(f"  ✅ Doc {i+1} incluido (score: {score:.3f}, chars: {doc_length:,})")
+                self.logger.info(f"  ✅ Doc {i+1} incluido (score: {score:.3f}, chars: {doc_length:,})")
             else:
-                print(f"  ❌ Doc {i+1} excluido (score: {score:.3f}, chars: {doc_length:,})")
+                self.logger.info(f"  ❌ Doc {i+1} excluido (score: {score:.3f}, chars: {doc_length:,})")
                 break
         
         # Construir contexto final
@@ -156,7 +158,7 @@ class ContextLimiter:
         """
         Limita el contexto con un enfoque balanceado (trunca documentos largos)
         """
-        print("⚖️ Aplicando estrategia: Balanced")
+        self.logger.info("⚖️ Aplicando estrategia: Balanced")
         
         selected_docs = []
         current_length = 0
@@ -167,7 +169,7 @@ class ContextLimiter:
         estimated_docs = min(len(retrieved_documents), 5)  # Máximo 5 documentos
         avg_space_per_doc = available_space // estimated_docs
         
-        print(f"  📊 Espacio promedio por documento: {avg_space_per_doc:,} caracteres")
+        self.logger.info(f"  📊 Espacio promedio por documento: {avg_space_per_doc:,} caracteres")
         
         for i, (document, score, details) in enumerate(retrieved_documents[:estimated_docs]):
             # Crear encabezado
@@ -183,9 +185,9 @@ class ContextLimiter:
             content = document.content
             if len(content) > available_for_content:
                 content = content[:available_for_content - 3] + "..."
-                print(f"  ✂️ Doc {i+1} truncado: {len(document.content):,} → {len(content):,} chars")
+                self.logger.info(f"  ✂️ Doc {i+1} truncado: {len(document.content):,} → {len(content):,} chars")
             else:
-                print(f"  ✅ Doc {i+1} completo: {len(content):,} chars")
+                self.logger.info(f"  ✅ Doc {i+1} completo: {len(content):,} chars")
             
             # Crear documento modificado
             modified_doc = DocumentEmbedding(
@@ -228,7 +230,7 @@ class ContextLimiter:
         """
         Limita el contexto tomando los primeros N documentos que quepan
         """
-        print("🔢 Aplicando estrategia: First N")
+        self.logger.info("🔢 Aplicando estrategia: First N")
         
         selected_docs = []
         current_length = 0
@@ -246,9 +248,9 @@ class ContextLimiter:
             if current_length + additional_length <= self.max_chars:
                 selected_docs.append((document, score, details))
                 current_length += additional_length
-                print(f"  ✅ Doc {i+1} incluido (posición: {i+1}, chars: {doc_length:,})")
+                self.logger.info(f"  ✅ Doc {i+1} incluido (posición: {i+1}, chars: {doc_length:,})")
             else:
-                print(f"  ❌ Doc {i+1} excluido (posición: {i+1}, chars: {doc_length:,})")
+                self.logger.info(f"  ❌ Doc {i+1} excluido (posición: {i+1}, chars: {doc_length:,})")
                 break
         
         # Construir contexto final
@@ -334,18 +336,18 @@ class ContextLimiter:
             old_tokens = self.max_tokens
             self.max_tokens = max_tokens
             self.max_chars = int(max_tokens * self.chars_per_token)
-            print(f"🔄 Límite de tokens actualizado: {old_tokens:,} → {max_tokens:,}")
+            self.logger.info(f"🔄 Límite de tokens actualizado: {old_tokens:,} → {max_tokens:,}")
         
         if chars_per_token is not None:
             old_ratio = self.chars_per_token
             self.chars_per_token = chars_per_token
             self.max_chars = int(self.max_tokens * chars_per_token)
-            print(f"🔄 Ratio chars/token actualizado: {old_ratio} → {chars_per_token}")
+            self.logger.info(f"🔄 Ratio chars/token actualizado: {old_ratio} → {chars_per_token}")
         
         if preserve_strategy is not None:
             old_strategy = self.preserve_strategy
             self.preserve_strategy = preserve_strategy
-            print(f"🔄 Estrategia actualizada: '{old_strategy}' → '{preserve_strategy}'")
+            self.logger.info(f"🔄 Estrategia actualizada: '{old_strategy}' → '{preserve_strategy}'")
     
     def get_configuration(self) -> Dict[str, Any]:
         """

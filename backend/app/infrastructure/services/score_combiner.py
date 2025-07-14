@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 from typing import List, Tuple, Dict, Optional, Any
 from ...domain.entities.document import DocumentEmbedding
 
@@ -6,6 +7,7 @@ class ScoreCombiner:
     """Servicio para combinar scores semánticos y lexicales (Paso 4 de RAG)"""
     
     def __init__(self, semantic_weight: float = 0.7, lexical_weight: float = 0.3):
+        self.logger = logging.getLogger(__name__)
         """
         Inicializa el combinador de scores
         
@@ -19,7 +21,7 @@ class ScoreCombiner:
         self.semantic_weight = semantic_weight
         self.lexical_weight = lexical_weight
         
-        print(f"🔧 ScoreCombiner configurado: semántico={semantic_weight}, lexical={lexical_weight}")
+        self.logger.info(f"🔧 ScoreCombiner configurado: semántico={semantic_weight}, lexical={lexical_weight}")
     
     async def combine_similarity_scores(
         self,
@@ -39,7 +41,7 @@ class ScoreCombiner:
         if len(semantic_results) != len(lexical_results):
             raise ValueError("Las listas de resultados deben tener la misma longitud")
         
-        print(f"🔄 Combinando {len(semantic_results)} scores semánticos y lexicales...")
+        self.logger.info(f"🔄 Combinando {len(semantic_results)} scores semánticos y lexicales...")
         
         # Crear mapeo de document_id a scores para facilitar la combinación
         semantic_map = {doc.document_id: score for doc, score in semantic_results}
@@ -71,7 +73,7 @@ class ScoreCombiner:
         # Ordenar por score combinado descendente
         combined_results.sort(key=lambda x: x[1], reverse=True)
         
-        print(f"✅ Scores combinados exitosamente")
+        self.logger.info(f"✅ Scores combinados exitosamente")
         self._log_combination_stats(combined_results)
         
         return combined_results
@@ -99,10 +101,10 @@ class ScoreCombiner:
         
         top_results = combined_results[:top_k]
         
-        print(f"🏆 Top {len(top_results)} documentos más relevantes:")
-        for i, (doc, combined_score, details) in enumerate(top_results, 1):
-            content_preview = doc.content[:80] + "..." if len(doc.content) > 80 else doc.content
-            print(f"  {i}. Score: {combined_score:.4f} (S:{details['semantic_score']:.3f}, L:{details['lexical_score']:.3f}) - {content_preview}")
+        self.logger.info(f"🏆 Top {len(top_results)} documentos más relevantes:")
+        for i, (document, combined_score, details) in enumerate(top_results, 1):
+            content_preview = document.content[:100] + "..." if len(document.content) > 100 else document.content
+            self.logger.info(f"  {i}. Score: {combined_score:.4f} (S:{details['semantic_score']:.3f}, L:{details['lexical_score']:.3f}) - {content_preview}")
         
         return top_results
     
@@ -117,10 +119,10 @@ class ScoreCombiner:
         semantic_scores = [details['semantic_score'] for _, _, details in combined_results]
         lexical_scores = [details['lexical_score'] for _, _, details in combined_results]
         
-        print(f"📊 Estadísticas de combinación:")
-        print(f"   Combined - Promedio: {np.mean(combined_scores):.4f}, Max: {max(combined_scores):.4f}, Min: {min(combined_scores):.4f}")
-        print(f"   Semantic - Promedio: {np.mean(semantic_scores):.4f}, Max: {max(semantic_scores):.4f}, Min: {min(semantic_scores):.4f}")
-        print(f"   Lexical  - Promedio: {np.mean(lexical_scores):.4f}, Max: {max(lexical_scores):.4f}, Min: {min(lexical_scores):.4f}")
+        self.logger.info(f"📊 Estadísticas de combinación:")
+        self.logger.info(f"   Combined - Promedio: {np.mean(combined_scores):.4f}, Max: {max(combined_scores):.4f}, Min: {min(combined_scores):.4f}")
+        self.logger.info(f"   Semantic - Promedio: {np.mean(semantic_scores):.4f}, Max: {max(semantic_scores):.4f}, Min: {min(semantic_scores):.4f}")
+        self.logger.info(f"   Lexical  - Promedio: {np.mean(lexical_scores):.4f}, Max: {max(lexical_scores):.4f}, Min: {min(lexical_scores):.4f}")
     
     async def analyze_score_distribution(
         self,
@@ -193,7 +195,7 @@ class ScoreCombiner:
         self.semantic_weight = semantic_weight
         self.lexical_weight = lexical_weight
         
-        print(f"🔄 Pesos actualizados: ({old_semantic:.2f}, {old_lexical:.2f}) → ({semantic_weight:.2f}, {lexical_weight:.2f})")
+        self.logger.info(f"🔄 Pesos actualizados: ({old_semantic:.2f}, {old_lexical:.2f}) → ({semantic_weight:.2f}, {lexical_weight:.2f})")
     
     def get_configuration(self) -> Dict[str, float]:
         """

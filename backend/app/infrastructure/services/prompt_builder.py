@@ -1,31 +1,25 @@
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+import logging
 
 class PromptBuilder:
     """Servicio para preparar prompts para OpenAI (Paso 3 de Aumento)"""
     
     def __init__(
         self,
-        system_instructions: Optional[str] = None,
         response_format: str = "detailed",
-        include_metadata: bool = True
+        include_metadata: bool = True,
+        system_instructions: Optional[str] = None
     ):
-        """
-        Inicializa el constructor de prompts
-        
-        Args:
-            system_instructions: Instrucciones específicas del sistema
-            response_format: Formato de respuesta ('detailed', 'concise', 'structured')
-            include_metadata: Si incluir metadatos en el prompt
-        """
+        self.logger = logging.getLogger(__name__)
         self.system_instructions = system_instructions or self._get_default_system_instructions()
         self.response_format = response_format
         self.include_metadata = include_metadata
         
-        print(f"🔧 PromptBuilder inicializado:")
-        print(f"   📝 Formato de respuesta: {response_format}")
-        print(f"   📊 Incluir metadatos: {include_metadata}")
-        print(f"   📋 Instrucciones del sistema: {len(self.system_instructions)} caracteres")
+        self.logger.info(f"🔧 PromptBuilder inicializado:")
+        self.logger.info(f"   📝 Formato de respuesta: {response_format}")
+        self.logger.info(f"   📊 Incluir metadatos: {include_metadata}")
+        self.logger.info(f"   📋 Instrucciones del sistema: {len(self.system_instructions)} caracteres")
     
     async def build_qa_prompt(
         self,
@@ -44,9 +38,9 @@ class PromptBuilder:
         Returns:
             Diccionario con 'system' y 'user' prompts
         """
-        print(f"🔨 Construyendo prompt Q&A...")
-        print(f"   ❓ Pregunta: {len(question)} caracteres")
-        print(f"   📄 Contexto: {len(context)} caracteres")
+        self.logger.info(f"🔨 Construyendo prompt Q&A...")
+        self.logger.info(f"   ❓ Pregunta: {len(question)} caracteres")
+        self.logger.info(f"   📄 Contexto: {len(context)} caracteres")
         
         # Construir prompt del sistema
         system_prompt = self._build_system_prompt(context_stats)
@@ -59,10 +53,10 @@ class PromptBuilder:
             "user": user_prompt
         }
         
-        print(f"✅ Prompt construido exitosamente:")
-        print(f"   📋 Sistema: {len(system_prompt)} caracteres")
-        print(f"   👤 Usuario: {len(user_prompt)} caracteres")
-        print(f"   📊 Total: {len(system_prompt) + len(user_prompt)} caracteres")
+        self.logger.info(f"✅ Prompt construido exitosamente:")
+        self.logger.info(f"   📋 Sistema: {len(system_prompt)} caracteres")
+        self.logger.info(f"   👤 Usuario: {len(user_prompt)} caracteres")
+        self.logger.info(f"   📊 Total: {len(system_prompt) + len(user_prompt)} caracteres")
         
         return prompt_data
     
@@ -249,7 +243,7 @@ Principios importantes:
         Returns:
             Diccionario con prompts del sistema y usuario
         """
-        print(f"🔄 Construyendo prompt de seguimiento...")
+        self.logger.info(f"🔄 Construyendo prompt de seguimiento...")
         
         # Sistema con contexto de conversación
         system_prompt = f"""{self.system_instructions}
@@ -317,9 +311,9 @@ Por favor, responde la nueva pregunta considerando el contexto de la conversaci�
         }
         
         if validation_result["valid"]:
-            print(f"✅ Prompt válido: {estimated_tokens:,}/{max_tokens:,} tokens")
+            self.logger.info(f"✅ Prompt válido: {estimated_tokens:,}/{max_tokens:,} tokens")
         else:
-            print(f"⚠️ Prompt excede límites: {estimated_tokens:,}/{max_tokens:,} tokens")
+            self.logger.warning(f"⚠️ Prompt excede límites: {estimated_tokens:,}/{max_tokens:,} tokens")
         
         return validation_result
     
@@ -340,17 +334,17 @@ Por favor, responde la nueva pregunta considerando el contexto de la conversaci�
         if system_instructions is not None:
             old_length = len(self.system_instructions)
             self.system_instructions = system_instructions
-            print(f"🔄 Instrucciones actualizadas: {old_length} → {len(system_instructions)} chars")
+            self.logger.info(f"🔄 Instrucciones actualizadas: {old_length} → {len(system_instructions)} chars")
         
         if response_format is not None:
             old_format = self.response_format
             self.response_format = response_format
-            print(f"🔄 Formato actualizado: '{old_format}' → '{response_format}'")
+            self.logger.info(f"🔄 Formato actualizado: '{old_format}' → '{response_format}'")
         
         if include_metadata is not None:
             old_metadata = self.include_metadata
             self.include_metadata = include_metadata
-            print(f"🔄 Metadatos actualizado: {old_metadata} → {include_metadata}")
+            self.logger.info(f"🔄 Metadatos actualizado: {old_metadata} → {include_metadata}")
     
     def get_configuration(self) -> Dict[str, Any]:
         """
