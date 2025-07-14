@@ -1,7 +1,7 @@
+import { VantaBackground } from "@/components/VantaBackground";
+
 export default function Home() {
   return (
-    <>
-      <h1>Home</h1>
-    </>
+    <VantaBackground />
   )
 }
