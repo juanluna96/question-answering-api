@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  question-answering-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      # Montar código fuente para hot-reload en desarrollo
+      - .:/app
+      # Persistir datos y cache
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+    env_file:
+      - .env
+    restart: unless-stopped
+    # Comando para desarrollo con hot-reload
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  data:
+    driver: local
