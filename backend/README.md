@@ -41,13 +41,9 @@ app/
 
 ## 🚀 Instalación y Configuración
 
-### 1. Instalar dependencias
+### Opción 1: Con Docker (Recomendado para desarrollo)
 
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Configurar variables de entorno
+#### 1. Configurar variables de entorno
 
 Copia el archivo de ejemplo y configura tus variables:
 
@@ -63,25 +59,79 @@ OPENAI_MODEL=text-embedding-3-small
 DEFAULT_CACHE_PATH=./data/cache/embeddings.pkl
 MAX_FILE_SIZE_MB=50
 BATCH_SIZE=100
+DOCUMENTS_CSV_PATH=./data/documents.csv
 ```
 
-### 3. Crear directorios necesarios
+#### 2. Ejecutar con Docker Compose
 
 ```bash
+# Construir y ejecutar en modo desarrollo
+docker-compose up --build
+
+# Ejecutar en segundo plano
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f
+
+# Detener servicios
+docker-compose down
+```
+
+#### 3. Comandos útiles de Docker
+
+```bash
+# Reconstruir imagen
+docker-compose build --no-cache
+
+# Ejecutar comandos dentro del contenedor
+docker-compose exec question-answering-api bash
+
+# Ver estado de servicios
+docker-compose ps
+
+# Limpiar volúmenes (cuidado: elimina datos)
+docker-compose down -v
+```
+
+### Opción 2: Instalación Local
+
+#### 1. Instalar dependencias
+
+```bash
+pip install -r requirements.txt
+```
+
+#### 2. Configurar variables de entorno
+
+Sigue el mismo proceso que en la opción Docker.
+
+#### 3. Crear directorios necesarios
+
+```bash
+mkdir -p data/
 mkdir -p data/cache
-mkdir -p data/uploads
 ```
 
 ## 🏃‍♂️ Ejecución
 
-### Desarrollo
+### Con Docker
+
+```bash
+# Desarrollo con hot-reload
+docker-compose up
+```
+
+### Sin Docker
+
+#### Desarrollo
 
 ```bash
 # Desde el directorio backend/
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Producción
+#### Producción
 
 ```bash
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
@@ -96,16 +146,14 @@ La API estará disponible en: `http://localhost:8000`
 
 ## 🔗 Endpoints Principales
 
-### 1. Cargar Embeddings
+### 1. Procesar Pregunta
 
 ```http
-POST /embeddings/load
+POST /answer
 Content-Type: application/json
 
 {
-  "csv_file_path": "/path/to/your/file.csv",
-  "cache_file_path": "/path/to/cache.pkl",
-  "force_regenerate": false
+  "question": "¿Cuál es el proceso para solicitar una licencia?"
 }
 ```
 
@@ -113,32 +161,41 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "message": "Embeddings procesados exitosamente desde /path/to/file.csv",
-  "embeddings_count": 150,
-  "cache_used": true,
-  "model_info": {
-    "model": "text-embedding-3-small",
-    "provider": "OpenAI",
-    "dimensions": 1536
-  }
+  "message": "Pregunta procesada exitosamente",
+  "data": {
+    "answer": "Para solicitar una licencia, debe seguir los siguientes pasos...",
+    "sources": ["doc_001", "doc_015", "doc_032"]
+  },
+  "timestamp": "2024-01-15T10:30:00Z",
+  "route": "/answer"
 }
 ```
 
-### 2. Estado del Caché
+### 2. Información de la API
 
 ```http
-GET /embeddings/cache/status?cache_file_path=/path/to/cache.pkl
+GET /
 ```
 
 **Respuesta:**
 ```json
 {
-  "exists": true,
-  "file_path": "/path/to/cache.pkl",
-  "size_bytes": 2048576,
-  "size_mb": 2.05,
-  "embeddings_count": 150,
-  "last_modified": 1703123456.789
+  "success": true,
+  "message": "Información de la API obtenida exitosamente",
+  "data": {
+    "name": "Question Answering API",
+    "version": "1.0.0",
+    "description": "API para procesamiento de preguntas y respuestas",
+    "endpoints": {
+      "/": "Información de la API",
+      "/health": "Estado de salud de la API",
+      "/docs": "Documentación interactiva (Swagger UI)",
+      "/redoc": "Documentación alternativa (ReDoc)",
+      "/answer": "Procesar pregunta (POST)"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00Z",
+  "route": "/"
 }
 ```
 
@@ -151,16 +208,29 @@ GET /health
 **Respuesta:**
 ```json
 {
-  "status": "healthy",
-  "service": "question-answering-api",
-  "version": "1.0.0",
-  "config": {
-    "openai_configured": true,
-    "model": "text-embedding-3-small",
-    "cache_path": "./data/cache/embeddings.pkl"
-  }
+  "success": true,
+  "message": "Servicio funcionando correctamente",
+  "data": {
+    "status": "healthy",
+    "service": "question-answering-api",
+    "version": "1.0.0",
+    "config": {
+      "openai_configured": true,
+      "model": "text-embedding-3-small",
+      "cache_path": "./data/cache/embeddings.pkl"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00Z",
+  "route": "/health"
 }
 ```
+
+### 4. Documentación Interactiva
+
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+
+> **Nota**: Los endpoints de embeddings (`/embeddings/*`) están implementados pero no están actualmente incluidos en la aplicación principal. Si necesitas usar funcionalidades de carga de embeddings, contacta al equipo de desarrollo.
 
 ## 📁 Formato del CSV
 
@@ -190,7 +260,62 @@ title,description,tags
 "Título 2","Otra descripción importante...","tag3,tag4"
 ```
 
+## 🐳 Docker
+
+### Ventajas del desarrollo con Docker
+
+- **Entorno consistente**: Mismo entorno en desarrollo, testing y producción
+- **Fácil setup**: Un solo comando para levantar toda la aplicación
+- **Aislamiento**: No interfiere con otras aplicaciones o versiones de Python
+- **Hot-reload**: Los cambios en el código se reflejan automáticamente
+- **Persistencia de datos**: Los datos y cache se mantienen entre reinicios
+
+### Estructura de archivos Docker
+
+```
+backend/
+├── Dockerfile              # Imagen de la aplicación
+├── docker-compose.yml      # Orquestación de servicios
+├── .dockerignore          # Archivos excluidos del build
+└── .env                   # Variables de entorno
+```
+
+### Volúmenes y persistencia
+
+El docker-compose está configurado con volúmenes para:
+
+- **Código fuente**: Montado para hot-reload (`./:/app`)
+- **Datos**: Persistencia de cache y uploads (`./data:/app/data`)
+
+### Variables de entorno en Docker
+
+El contenedor lee automáticamente el archivo `.env`. Asegúrate de configurar:
+
+```env
+# Requerido
+OPENAI_API_KEY=tu_api_key_aqui
+
+# Opcional (con valores por defecto)
+OPENAI_MODEL=text-embedding-3-small
+DEFAULT_CACHE_PATH=./data/cache/embeddings.pkl
+DOCUMENTS_CSV_PATH=./data/documents.csv
+MAX_FILE_SIZE_MB=50
+BATCH_SIZE=100
+```
+
 ## 🧪 Testing
+
+### Con Docker
+
+```bash
+# Ejecutar tests dentro del contenedor
+docker-compose exec question-answering-api pytest
+
+# O construir imagen específica para testing
+docker-compose -f docker-compose.test.yml up --build
+```
+
+### Sin Docker
 
 ```bash
 # Instalar dependencias de testing
@@ -217,7 +342,68 @@ pytest
 
 ## 🐛 Troubleshooting
 
-### Error: "OPENAI_API_KEY no está configurada"
+### Problemas con Docker
+
+#### Error: "docker-compose command not found"
+
+```bash
+# Instalar Docker Compose
+# En macOS con Homebrew:
+brew install docker-compose
+
+# En Ubuntu/Debian:
+sudo apt-get install docker-compose
+
+# Verificar instalación
+docker-compose --version
+```
+
+#### Error: "Cannot connect to the Docker daemon"
+
+```bash
+# Iniciar Docker Desktop (macOS/Windows)
+# O iniciar servicio Docker (Linux)
+sudo systemctl start docker
+
+# Verificar que Docker esté corriendo
+docker ps
+```
+
+#### Error: "Port 8000 already in use"
+
+```bash
+# Encontrar proceso usando el puerto
+lsof -i :8000
+
+# Matar proceso si es necesario
+kill -9 <PID>
+
+# O cambiar puerto en docker-compose.yml
+ports:
+  - "8001:8000"  # Usar puerto 8001 en lugar de 8000
+```
+
+#### Contenedor no se actualiza con cambios de código
+
+```bash
+# Reconstruir imagen sin cache
+docker-compose build --no-cache
+
+# Verificar que el volumen esté montado correctamente
+docker-compose exec question-answering-api ls -la /app
+```
+
+#### Problemas de permisos con volúmenes
+
+```bash
+# En Linux, ajustar permisos del directorio data
+sudo chown -R $USER:$USER ./data
+chmod -R 755 ./data
+```
+
+### Problemas generales
+
+#### Error: "OPENAI_API_KEY no está configurada"
 
 ```bash
 # Verificar que la variable esté configurada
@@ -225,28 +411,21 @@ echo $OPENAI_API_KEY
 
 # O en el archivo .env
 cat .env | grep OPENAI_API_KEY
+
+# En Docker, verificar dentro del contenedor
+docker-compose exec question-answering-api env | grep OPENAI
 ```
 
-### Error: "Archivo no encontrado"
+#### Error: "Archivo no encontrado"
 
 - Verificar que la ruta del CSV sea absoluta
 - Verificar permisos de lectura del archivo
 - Verificar que el archivo no esté vacío
+- En Docker: verificar que el archivo esté en el directorio montado
 
-### Error: "Error al generar embedding"
+#### Error: "Error al generar embedding"
 
 - Verificar conectividad a internet
 - Verificar que la API key de OpenAI sea válida
 - Verificar límites de uso de la API de OpenAI
-
-## 🤝 Contribución
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -am 'Agrega nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+- En Docker: verificar que el contenedor tenga acceso a internet
