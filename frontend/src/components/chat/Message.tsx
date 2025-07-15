@@ -2,24 +2,18 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import AnimatedStatusText from '../ui/AnimatedStatusText';
 
 interface MessageProps {
   content: string | React.ReactNode;
   type: 'user' | 'response';
   timestamp?: Date;
   isLoading?: boolean;
+  loadingStartTime?: Date;
 }
 
-export const Message = ({ content, type, timestamp, isLoading = false }: MessageProps) => {
+export const Message = ({ content, type, timestamp, isLoading = false, loadingStartTime }: MessageProps) => {
   const isUser = type === 'user';
-  
-  const getStatusText = () => {
-    if (isUser) {
-      return 'Enviado';
-    } else {
-      return isLoading ? 'Pensando...' : 'Respondido';
-    }
-  };
   
   return (
     <div className={`flex w-full mb-4 ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
@@ -47,9 +41,11 @@ export const Message = ({ content, type, timestamp, isLoading = false }: Message
               timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
           </span>
-          <span>
-            {getStatusText()}
-          </span>
+          <AnimatedStatusText 
+             isLoading={isLoading && !isUser}
+             loadingStartTime={loadingStartTime}
+             staticText={isUser ? 'Enviado' : 'Respondido'}
+           />
         </div>
       </div>
     </div>
