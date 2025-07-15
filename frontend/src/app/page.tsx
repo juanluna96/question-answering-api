@@ -36,11 +36,13 @@ export default function Home() {
       const response = await chatService.askQuestion(value);
       
       let responseContent: string;
+      let responseSources: string[] | undefined;
       
       if (ChatService.isSuccessResponse(response)) {
         // Respuesta exitosa
         const successData = ChatService.getSuccessData(response);
         responseContent = successData?.answer || 'Respuesta recibida sin contenido';
+        responseSources = successData?.sources;
       } else {
         // Error de la API o validación
         responseContent = ChatService.getErrorMessage(response);
@@ -50,7 +52,8 @@ export default function Home() {
         id: (Date.now() + 1).toString(),
         content: responseContent,
         type: 'response',
-        timestamp: new Date()
+        timestamp: new Date(),
+        sources: responseSources
       };
       
       setMessages(prev => [...prev, responseMessage]);

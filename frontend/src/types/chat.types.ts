@@ -67,4 +67,5 @@ export interface MessageData {
   content: string;
   type: 'user' | 'response';
   timestamp: Date;
+  sources?: string[];
 }

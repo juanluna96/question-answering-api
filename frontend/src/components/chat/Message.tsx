@@ -10,9 +10,10 @@ interface MessageProps {
   timestamp?: Date;
   isLoading?: boolean;
   loadingStartTime?: Date;
+  sources?: string[];
 }
 
-export const Message = ({ content, type, timestamp, isLoading = false, loadingStartTime }: MessageProps) => {
+export const Message = ({ content, type, timestamp, isLoading = false, loadingStartTime, sources }: MessageProps) => {
   const isUser = type === 'user';
   
   return (
@@ -30,6 +31,23 @@ export const Message = ({ content, type, timestamp, isLoading = false, loadingSt
           </ReactMarkdown>
         ) : (
           content
+        )}
+        
+        {/* Sección de documentos fuente */}
+        {sources && sources.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <p className="text-xs text-gray-600 mb-2 font-medium">Documentos fuentes:</p>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              {sources.map((source, index) => (
+                <div 
+                  key={index}
+                  className="flex-shrink-0 bg-blue-50 border border-blue-200 rounded-md px-3 py-1 text-xs text-blue-700 font-medium whitespace-nowrap uppercase"
+                >
+                  {source}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
         <div className={`flex justify-between items-center text-xs mt-2 ${
           isUser ? 'text-blue-100' : 'text-gray-500'

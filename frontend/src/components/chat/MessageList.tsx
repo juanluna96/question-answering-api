@@ -8,6 +8,7 @@ interface MessageData {
   content: string;
   type: 'user' | 'response';
   timestamp: Date;
+  sources?: string[];
 }
 
 interface MessageListProps {
@@ -42,6 +43,7 @@ export const MessageList = ({ messages, isLoading }: MessageListProps) => {
                content={message.content}
                type={message.type}
                timestamp={message.timestamp}
+               sources={message.sources}
                isLoading={isLoading && isLastMessage && message.type === 'user'}
              />
            );
