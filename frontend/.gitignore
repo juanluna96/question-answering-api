@@ -1,0 +1,37 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+node_modules/
+.pnp/
+.pnp.js
+package-lock.json
+
+# Production
+build/
+out/
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Next.js specific
+.next/
+
+# Variables de entorno
+.env
+
+# Archivos de caché
+.cache/
+.cache-loader/
+.cache-loader/*
+.node-gyp/
+node-gyp/
+npm-debug.log

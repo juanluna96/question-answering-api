@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+.Python
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+
+# FastAPI specific (common for Python web apps)
+.env
+
+# Datafiles from thecnical interview
+data/
