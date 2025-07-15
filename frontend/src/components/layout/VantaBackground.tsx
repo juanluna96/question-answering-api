@@ -50,6 +50,7 @@ export const VantaBackground = ({ children }: VantaBackgroundProps) => {
         try {
           console.log('Initializing Vanta DOTS with THREE:', THREE);
           setVantaEffect(
+            //@ts-ignore
             DOTS({
               el: vantaRef.current,
               THREE: THREE,
@@ -72,6 +73,7 @@ export const VantaBackground = ({ children }: VantaBackgroundProps) => {
     initVanta();
     
     return () => {
+      //@ts-ignore
       if (vantaEffect) vantaEffect.destroy();
     };
   }, [vantaEffect]);
