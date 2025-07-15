@@ -13,7 +13,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (value: string) => {
-    if (!value.trim()) return;
+    const trimmedValue = value.trim();
+    if (!trimmedValue || trimmedValue.length < 3) return;
 
     // Marcar que el usuario ha interactuado
     if (!hasUserInteracted) {
@@ -23,7 +24,7 @@ export default function Home() {
     // Agregar mensaje del usuario
     const userMessage: MessageData = {
       id: Date.now().toString(),
-      content: value,
+      content: trimmedValue,
       type: 'user',
       timestamp: new Date()
     };
@@ -33,7 +34,7 @@ export default function Home() {
 
     try {
       // Llamada real a la API
-      const response = await chatService.askQuestion(value);
+      const response = await chatService.askQuestion(trimmedValue);
       
       let responseContent: string;
       let responseSources: string[] | undefined;
@@ -85,7 +86,7 @@ export default function Home() {
       
       {/* Lista de mensajes cuando hay interacción */}
       {hasUserInteracted && (
-          <div className="absolute inset-0 z-20" style={{height: 'calc(100vh - 120px)'}}>
+          <div className="absolute inset-0 z-20" style={{height: 'calc(100vh - 150px)'}}>
             <div className="h-full overflow-y-auto pt-8">
               <div className="max-w-6xl mx-auto px-4">
                 <MessageList messages={messages} isLoading={isLoading} />
