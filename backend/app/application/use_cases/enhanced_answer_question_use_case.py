@@ -71,6 +71,10 @@ class EnhancedAnswerQuestionUseCase:
                         debug_info
                     )
                 
+                # Determinar si incluir sources basado en la respuesta
+                source_document_ids = result.get('source_document_ids')
+                sources = self._determine_sources(result['answer'], source_document_ids)
+                
                 # Crear respuesta exitosa
                 return AnswerResponseDTO(
                     answer=result['answer'],
@@ -78,7 +82,7 @@ class EnhancedAnswerQuestionUseCase:
                     status="success",
                     confidence=result.get('confidence', 0.8),
                     processing_time_ms=service_time,
-                    sources=result.get('source_document_ids'),
+                    sources=sources,
                     metadata=metadata
                 )
                 
@@ -125,7 +129,7 @@ class EnhancedAnswerQuestionUseCase:
             debug_info.append(f"All retries exhausted. Final error: {str(last_error)}")
         
         metadata = self._prepare_error_metadata(
-            last_error if last_error is not None else Exception("Unknown error"), "error", processing_time, debug_info, retry_count
+            last_error if last_error is not None else Exception("Unknown error"), "error", processing_time, debug_info, self._max_retries
         ) if include_metadata else None
         
         return AnswerResponseDTO(
@@ -176,10 +180,13 @@ class EnhancedAnswerQuestionUseCase:
         }
         
         # Añadir estadísticas del servicio RAG si está disponible
-        if isinstance(self._question_service, RAGQuestionService):
+        if isinstance(self._question_service, RAGQuestionService) or 'RAG' in self._question_service.__class__.__name__:
             try:
                 service_stats = await self._question_service.get_service_statistics()
-                metadata['rag_service'] = service_stats
+                if service_stats is not None:
+                    metadata['rag_service'] = service_stats
+                else:
+                    metadata['rag_service'] = {'error': 'Service statistics not available'}
             except Exception:
                 metadata['rag_service'] = {'error': 'Could not retrieve RAG statistics'}
         
@@ -212,14 +219,12 @@ class EnhancedAnswerQuestionUseCase:
             Dict[str, Any]: Metadatos de error
         """
         metadata = {
-            'error': {
-                'type': error_type,
-                'message': str(error),
-                'error_class': error.__class__.__name__,
-                'retry_count': retry_count,
-                'processing_time_ms': processing_time,
-                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
-            }
+            'error_type': error_type,
+            'error_message': str(error),
+            'error_class': error.__class__.__name__,
+            'retry_count': retry_count,
+            'processing_time_ms': processing_time,
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
         }
         
         if debug_info:
@@ -244,6 +249,38 @@ class EnhancedAnswerQuestionUseCase:
         wait_time = min(2 ** retry_count, 5)  # Máximo 5 segundos
         await asyncio.sleep(wait_time)
         return wait_time
+    
+    def _determine_sources(self, answer: str, source_document_ids) -> Optional[list]:
+        """
+        Determina si se deben incluir las fuentes basándose en la respuesta
+        
+        Args:
+            answer: La respuesta generada
+            source_document_ids: Los IDs de documentos fuente
+            
+        Returns:
+            Optional[list]: Lista de fuentes o None si no se deben incluir
+        """
+        # Si no hay fuentes, retornar None
+        if not source_document_ids:
+            return None
+            
+        # Frases que indican respuestas genéricas
+        generic_phrases = [
+            "la información proporcionada no contiene",
+            "no puedo responder a la pregunta",
+            "basándome en el contexto dado",
+            "no contiene información",
+            "no contiene detalles"
+        ]
+        
+        # Verificar si la respuesta contiene frases genéricas
+        answer_lower = answer.lower()
+        for phrase in generic_phrases:
+            if phrase in answer_lower:
+                return None
+                
+        return source_document_ids
     
     def _get_user_friendly_error_message(self, error: Exception) -> str:
         """
@@ -290,10 +327,13 @@ class EnhancedAnswerQuestionUseCase:
             }
             
             # Añadir estadísticas específicas del RAG si está disponible
-            if isinstance(self._question_service, RAGQuestionService):
+            if isinstance(self._question_service, RAGQuestionService) or 'RAG' in self._question_service.__class__.__name__:
                 try:
                     service_stats = await self._question_service.get_service_statistics()
-                    health_info['rag_statistics'] = service_stats
+                    if service_stats is not None:
+                        health_info['rag_statistics'] = service_stats
+                    else:
+                        health_info['rag_statistics_error'] = 'Service statistics not available'
                 except Exception as e:
                     health_info['rag_statistics_error'] = str(e)
             
