@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import Message from './Message';
-import LoadingDots from '../ui/LoadingDots';
+import { LoadingSkeletonText } from '../ui/LoadingSkeletonText';
 
 interface MessageData {
   id: string;
@@ -24,15 +24,29 @@ export const MessageList = ({ messages, isLoading }: MessageListProps) => {
             {TitleChat}
           </h2>
         </div>
-        {messages.map((message) => (
+        {messages.map((message, index) => {
+           const isLastMessage = index === messages.length - 1;
+           return (
+             <Message
+               key={message.id}
+               content={message.content}
+               type={message.type}
+               timestamp={message.timestamp}
+               isLoading={isLoading && isLastMessage && message.type === 'user'}
+             />
+           );
+         })}
+        {isLoading && (
           <Message
-            key={message.id}
-            content={message.content}
-            type={message.type}
-            timestamp={message.timestamp}
+            key="loading"
+            content={
+              <LoadingSkeletonText />
+            }
+            type="response"
+            isLoading={true}
+            timestamp={new Date()}
           />
-        ))}
-        {isLoading && <LoadingDots />}
+        )}
     </div>
   );
 };
