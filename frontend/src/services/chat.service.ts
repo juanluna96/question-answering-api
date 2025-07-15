@@ -26,7 +26,17 @@ export class ChatService {
       
       const response = await configService.post<SuccessResponse>(this.endpoint, requestBody);
       
-      return response.data;
+      if (ChatService.isSuccessResponse(response.data)) {
+         // Verificar que data no sea null
+         if (!response.data.data) {
+           throw new Error('Respuesta de la API no contiene datos');
+         }
+         return response.data;
+       } else if (ChatService.isErrorResponse(response.data)) {
+         return response.data;
+       } else {
+         throw new Error('Formato de respuesta no reconocido');
+       }
     } catch (error: any) {
       // Si el error tiene respuesta de la API, extraer los datos
       if (error.response?.data) {

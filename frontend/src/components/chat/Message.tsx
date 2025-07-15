@@ -1,5 +1,7 @@
 "use client";
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface MessageProps {
   content: string;
@@ -17,7 +19,11 @@ export const Message = ({ content, type, timestamp }: MessageProps) => {
           ? 'bg-blue-600 text-white rounded-br-sm' 
           : 'bg-white text-gray-800 rounded-bl-sm border border-gray-200'
       }`}>
-        <p className="text-sm leading-relaxed">{content}</p>
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]}
+        >
+          {content}
+        </ReactMarkdown>
         {timestamp && (
           <p className={`text-xs mt-1 ${
             isUser ? 'text-blue-100' : 'text-gray-500'
