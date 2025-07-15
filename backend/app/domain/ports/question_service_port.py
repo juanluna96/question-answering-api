@@ -34,3 +34,12 @@ class QuestionServicePort(ABC):
             bool: True si la pregunta es válida, False en caso contrario
         """
         pass
+    
+    async def get_service_statistics(self) -> Optional[dict]:
+        """
+        Obtiene estadísticas del servicio (opcional)
+        
+        Returns:
+            Optional[dict]: Estadísticas del servicio o None si no están disponibles
+        """
+        return None

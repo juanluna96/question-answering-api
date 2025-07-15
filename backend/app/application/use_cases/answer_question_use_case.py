@@ -44,6 +44,10 @@ class AnswerQuestionUseCase:
                 # Usar el tiempo del servicio si está disponible, sino el calculado aquí
                 service_time = result.get('processing_time_ms', total_processing_time)
                 
+                # Determinar si incluir sources basado en la respuesta
+                source_document_ids = result.get('source_document_ids')
+                sources = self._determine_sources(result['answer'], source_document_ids)
+                
                 # Crear respuesta exitosa
                 return AnswerResponseDTO(
                     answer=result['answer'],
@@ -51,7 +55,7 @@ class AnswerQuestionUseCase:
                     status="success",
                     confidence=result.get('confidence', 0.8),
                     processing_time_ms=service_time,
-                    sources=result.get('source_document_ids'),
+                    sources=sources,
                     metadata=result.get('metadata')
                 )
                 
@@ -100,6 +104,38 @@ class AnswerQuestionUseCase:
         import asyncio
         wait_time = min(2 ** retry_count, 5)  # Máximo 5 segundos
         await asyncio.sleep(wait_time)
+    
+    def _determine_sources(self, answer: str, source_document_ids) -> Optional[list]:
+        """
+        Determina si se deben incluir las fuentes basándose en la respuesta
+        
+        Args:
+            answer: La respuesta generada
+            source_document_ids: Los IDs de documentos fuente
+            
+        Returns:
+            Optional[list]: Lista de fuentes o None si no se deben incluir
+        """
+        # Si no hay fuentes, retornar None
+        if not source_document_ids:
+            return None
+            
+        # Frases que indican respuestas genéricas
+        generic_phrases = [
+            "la información proporcionada no contiene",
+            "no puedo responder a la pregunta",
+            "basándome en el contexto dado",
+            "no contiene información",
+            "no contiene detalles"
+        ]
+        
+        # Verificar si la respuesta contiene frases genéricas
+        answer_lower = answer.lower()
+        for phrase in generic_phrases:
+            if phrase in answer_lower:
+                return None
+                
+        return source_document_ids
     
     def _get_user_friendly_error_message(self, error: Exception) -> str:
         """

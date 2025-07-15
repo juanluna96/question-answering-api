@@ -305,25 +305,202 @@ BATCH_SIZE=100
 
 ## 🧪 Testing
 
-### Con Docker
+El proyecto incluye una suite completa de tests que cubren todos los casos de uso y componentes principales.
 
-```bash
-# Ejecutar tests dentro del contenedor
-docker-compose exec question-answering-api pytest
+### Estructura de Tests
 
-# O construir imagen específica para testing
-docker-compose -f docker-compose.test.yml up --build
+```
+tests/
+├── __init__.py
+├── conftest.py                              # Configuración y fixtures compartidos
+└── use_cases/
+    ├── __init__.py
+    ├── test_answer_question_use_case.py      # Tests del caso de uso básico
+    ├── test_enhanced_answer_question_use_case.py  # Tests del caso de uso mejorado
+    └── test_load_embeddings_use_case.py      # Tests de carga de embeddings
 ```
 
-### Sin Docker
+### Cobertura de Tests
+
+#### 📝 **test_answer_question_use_case.py** (17 tests)
+- ✅ Procesamiento exitoso de preguntas
+- ✅ Manejo de errores de validación
+- ✅ Manejo de errores de procesamiento
+- ✅ Cálculo correcto de tiempos de procesamiento
+- ✅ Lógica condicional de fuentes (sources)
+- ✅ Reintentos automáticos en caso de error
+- ✅ Validación de entrada y respuesta
+
+#### 🚀 **test_enhanced_answer_question_use_case.py** (13 tests)
+- ✅ Metadatos completos del proceso RAG
+- ✅ Información de debug (desarrollo)
+- ✅ Estadísticas del servicio RAG
+- ✅ Manejo de errores con reintentos
+- ✅ Análisis de preguntas y respuestas
+- ✅ Tiempos de procesamiento detallados
+- ✅ Detección automática de servicios RAG vs básicos
+- ✅ Manejo de errores en estadísticas del servicio
+
+#### 📊 **test_load_embeddings_use_case.py** (12 tests)
+- ✅ Carga exitosa de embeddings desde CSV
+- ✅ Validación de archivos CSV
+- ✅ Manejo de errores de archivo
+- ✅ Estado del cache de embeddings
+- ✅ Gestión de memoria y recursos
+- ✅ Procesamiento por lotes (batching)
+
+### Ejecutar Tests
+
+#### Con Docker (Recomendado)
+
+```bash
+# Ejecutar todos los tests
+docker-compose exec question-answering-api pytest
+
+# Ejecutar tests con verbose output
+docker-compose exec question-answering-api pytest -v
+
+# Ejecutar tests de un archivo específico
+docker-compose exec question-answering-api pytest tests/use_cases/test_answer_question_use_case.py
+
+# Ejecutar un test específico
+docker-compose exec question-answering-api pytest tests/use_cases/test_answer_question_use_case.py::TestAnswerQuestionUseCase::test_execute_success
+
+# Ejecutar tests con coverage
+docker-compose exec question-answering-api pytest --cov=app
+
+# Generar reporte HTML de coverage
+docker-compose exec question-answering-api pytest --cov=app --cov-report=html
+```
+
+#### Sin Docker
 
 ```bash
 # Instalar dependencias de testing
-pip install pytest pytest-asyncio httpx
+pip install pytest pytest-asyncio httpx pytest-cov
 
-# Ejecutar tests
+# Ejecutar todos los tests
 pytest
+
+# Ejecutar tests con verbose output
+pytest -v
+
+# Ejecutar tests con coverage
+pytest --cov=app
+
+# Ejecutar tests en paralelo (más rápido)
+pip install pytest-xdist
+pytest -n auto
 ```
+
+### Configuración de Tests
+
+Los tests están configurados en `pytest.ini`:
+
+```ini
+[tool:pytest]
+addopts = -v --tb=short
+testpaths = tests
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+asyncio_mode = auto
+```
+
+### Fixtures y Mocks
+
+El archivo `conftest.py` proporciona fixtures reutilizables:
+
+- **`sample_question_request`**: DTO de pregunta de ejemplo
+- **`mock_question_service`**: Mock del servicio básico de preguntas
+- **`mock_rag_service`**: Mock del servicio RAG con estadísticas
+- **`enhanced_use_case`**: Instancia del caso de uso mejorado
+- **`mock_embedding_service`**: Mock del servicio de embeddings
+- **`mock_cache_service`**: Mock del servicio de cache
+
+### Tipos de Tests
+
+#### 🎯 **Tests Unitarios**
+- Cada caso de uso se prueba de forma aislada
+- Uso extensivo de mocks para dependencias externas
+- Verificación de lógica de negocio específica
+
+#### 🔄 **Tests de Integración**
+- Interacción entre múltiples componentes
+- Flujos completos de procesamiento
+- Manejo de errores end-to-end
+
+#### ⚡ **Tests Asíncronos**
+- Todos los casos de uso son asíncronos
+- Uso de `pytest-asyncio` para manejo correcto
+- Simulación de operaciones de I/O
+
+### Estrategias de Testing
+
+#### 📊 **Casos de Éxito**
+- Procesamiento normal de preguntas
+- Generación correcta de respuestas
+- Metadatos completos y precisos
+
+#### ❌ **Casos de Error**
+- Validación de entrada inválida
+- Errores de servicios externos
+- Timeouts y problemas de conectividad
+- Reintentos automáticos
+
+#### 🔍 **Casos Edge**
+- Preguntas muy cortas o muy largas
+- Respuestas genéricas vs específicas
+- Servicios RAG vs servicios básicos
+- Cache hits vs cache misses
+
+### Métricas de Calidad
+
+```bash
+# Ver estadísticas de tests
+pytest --tb=no -q
+
+# Resultado esperado:
+# 42 passed, 3 warnings in 0.98s
+```
+
+#### Cobertura de Código
+- **Objetivo**: >90% de cobertura
+- **Áreas críticas**: 100% en casos de uso
+- **Exclusiones**: Configuración y archivos de infraestructura
+
+### Debugging Tests
+
+```bash
+# Ejecutar tests con output detallado
+pytest -s -vv
+
+# Ejecutar tests con pdb en fallos
+pytest --pdb
+
+# Ejecutar solo tests que fallaron la última vez
+pytest --lf
+
+# Ejecutar tests hasta el primer fallo
+pytest -x
+```
+
+### CI/CD Integration
+
+Los tests están diseñados para integrarse fácilmente en pipelines de CI/CD:
+
+```bash
+# Comando típico para CI
+pytest --cov=app --cov-report=xml --junitxml=test-results.xml
+```
+
+### Buenas Prácticas
+
+1. **Aislamiento**: Cada test es independiente
+2. **Determinismo**: Los tests producen resultados consistentes
+3. **Velocidad**: Uso de mocks para operaciones costosas
+4. **Claridad**: Nombres descriptivos y documentación
+5. **Mantenibilidad**: Fixtures reutilizables y código DRY
 
 ## 🔧 Configuración Avanzada
 

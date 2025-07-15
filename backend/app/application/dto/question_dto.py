@@ -43,7 +43,7 @@ class AnswerResponseDTO(BaseModel):
         ge=0.0,
         le=1.0
     )
-    processing_time_ms: Optional[int] = Field(
+    processing_time_ms: int = Field(
         description="Tiempo de procesamiento en milisegundos",
         ge=0
     )
